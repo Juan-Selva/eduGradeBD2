@@ -71,6 +71,7 @@ docker-compose logs -f
 
 | Servicio | Puerto | URL |
 |----------|--------|-----|
+| Frontend React | 5173 | http://localhost:5173 |
 | API Backend | 3000 | http://localhost:3000 |
 | Swagger Docs | 3000 | http://localhost:3000/api-docs |
 | MongoDB | 27017 | mongodb://localhost:27017 |
