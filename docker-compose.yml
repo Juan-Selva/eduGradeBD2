@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # MongoDB - RF1: Registro Academico Oficial
+  # Justificacion: Esquema flexible para calificaciones heterogeneas
+  # ============================================
+  mongodb:
+    image: mongo:7.0
+    container_name: edugrade-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: edugrade2024
+      MONGO_INITDB_DATABASE: edugrade
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - edugrade-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Neo4j - RF3: Relaciones Academicas Complejas
+  # Justificacion: Grafos para equivalencias, trayectorias y correlatividades
+  # ============================================
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: edugrade-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/edugrade2024
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - edugrade-network
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "edugrade2024", "RETURN 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 45s
+
+  # ============================================
+  # Cassandra - RF4/RF5: Analitica y Auditoria
+  # Justificacion: Escritura masiva, append-only, time-series
+  # ============================================
+  cassandra:
+    image: cassandra:4.1
+    container_name: edugrade-cassandra
+    restart: unless-stopped
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: EduGradeCluster
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./docker/cassandra/init-cassandra.cql:/docker-entrypoint-initdb.d/init.cql:ro
+    networks:
+      - edugrade-network
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  # ============================================
+  # Redis - Cache y Reglas de Conversion (RF2)
+  # Justificacion: Cache de reglas frecuentes, sesiones
+  # ============================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: edugrade-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass edugrade2024
+    volumes:
+      - redis_data:/data
+    networks:
+      - edugrade-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "edugrade2024", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Backend API - Node.js/Express
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edugrade-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DOCKER_ENV: "true"
+      # MongoDB
+      MONGODB_URI: mongodb://admin:edugrade2024@mongodb:27017/edugrade?authSource=admin
+      MONGODB_TEST_URI: mongodb://admin:edugrade2024@mongodb:27017/edugrade_test?authSource=admin
+      # Neo4j
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: edugrade2024
+      # Cassandra
+      CASSANDRA_CONTACT_POINTS: cassandra
+      CASSANDRA_LOCAL_DC: datacenter1
+      CASSANDRA_KEYSPACE: edugrade
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: edugrade2024
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - edugrade-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # ============================================
+  # Frontend - React (opcional)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: edugrade-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3000/api
+    depends_on:
+      - backend
+    networks:
+      - edugrade-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+networks:
+  edugrade-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  cassandra_data:
+    driver: local
+  redis_data:
+    driver: local

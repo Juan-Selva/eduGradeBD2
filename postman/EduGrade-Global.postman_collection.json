@@ -1,0 +1,1012 @@
+{
+	"info": {
+		"_postman_id": "edugrade-global-api-collection",
+		"name": "EduGrade Global API",
+		"description": "API completa para el sistema de gestión de calificaciones académicas internacionales EduGrade Global.\n\nSoporta 4 sistemas educativos:\n- AR (Argentina): Notas 1-10\n- US (Estados Unidos): Letras A-F, GPA 0-4\n- UK (Reino Unido): Letras A*-U, Puntos 0-100\n- DE (Alemania): Notas 1-6\n\n## Configuración\n1. Configurar variable `baseUrl` (default: http://localhost:3000)\n2. Ejecutar Login para obtener token\n3. El token se guarda automáticamente en `accessToken`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{"key": "baseUrl", "value": "http://localhost:3000"},
+		{"key": "accessToken", "value": ""},
+		{"key": "refreshToken", "value": ""},
+		{"key": "estudianteId", "value": ""},
+		{"key": "calificacionId", "value": ""},
+		{"key": "institucionId", "value": ""},
+		{"key": "materiaId", "value": ""}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{"key": "token", "value": "{{accessToken}}", "type": "string"}]
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"description": "Autenticación y gestión de usuarios",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"usuario@ejemplo.com\",\n  \"password\": \"password123\",\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Pérez\",\n  \"rol\": \"docente\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"]}
+					},
+					"response": [
+						{
+							"name": "201 - Usuario registrado",
+							"status": "Created",
+							"code": 201,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"usuario\": {\n      \"_id\": \"64a1b2c3d4e5f6789012345\",\n      \"email\": \"usuario@ejemplo.com\",\n      \"nombre\": \"Juan\",\n      \"apellido\": \"Pérez\",\n      \"rol\": \"docente\"\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIs...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIs...\"\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data) {",
+									"        pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+									"        pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {"type": "noauth"},
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@edugrade.com\",\n  \"password\": \"admin123456\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"]}
+					},
+					"response": [
+						{
+							"name": "200 - Login exitoso",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIs...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIs...\",\n    \"usuario\": {\n      \"_id\": \"64a1b2c3d4e5f6789012345\",\n      \"email\": \"admin@edugrade.com\",\n      \"nombre\": \"Admin\",\n      \"rol\": \"admin\"\n    }\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data) {",
+									"        pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+									"        if (jsonData.data.refreshToken) {",
+									"            pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+									"        }",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {"type": "noauth"},
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout All Sessions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/auth/logout-all", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout-all"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"passwordActual\": \"password123\",\n  \"passwordNuevo\": \"newpassword123\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "change-password"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Estudiantes",
+			"description": "Gestión de estudiantes",
+			"item": [
+				{
+					"name": "List All",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/estudiantes?page=1&limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "estudiantes"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "limit", "value": "10"},
+								{"key": "paisOrigen", "value": "AR", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('estudianteId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/estudiantes/{{estudianteId}}", "host": ["{{baseUrl}}"], "path": ["api", "estudiantes", "{{estudianteId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by DNI",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/estudiantes/dni/12345678", "host": ["{{baseUrl}}"], "path": ["api", "estudiantes", "dni", "12345678"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('estudianteId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"dni\": \"12345678\",\n  \"nombre\": \"María\",\n  \"apellido\": \"González\",\n  \"email\": \"maria.gonzalez@email.com\",\n  \"fechaNacimiento\": \"2000-05-15\",\n  \"paisOrigen\": \"AR\",\n  \"institucionActual\": \"{{institucionId}}\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/estudiantes", "host": ["{{baseUrl}}"], "path": ["api", "estudiantes"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"María Eugenia\",\n  \"email\": \"maria.eugenia@email.com\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/estudiantes/{{estudianteId}}", "host": ["{{baseUrl}}"], "path": ["api", "estudiantes", "{{estudianteId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/estudiantes/{{estudianteId}}", "host": ["{{baseUrl}}"], "path": ["api", "estudiantes", "{{estudianteId}}"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Calificaciones",
+			"description": "Gestión de calificaciones académicas (inmutables)",
+			"item": [
+				{
+					"name": "List with Filters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/calificaciones?page=1&limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "calificaciones"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "limit", "value": "10"},
+								{"key": "estudianteId", "value": "{{estudianteId}}", "disabled": true},
+								{"key": "materiaId", "value": "{{materiaId}}", "disabled": true},
+								{"key": "sistemaOrigen", "value": "AR", "disabled": true},
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('calificacionId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/calificaciones/{{calificacionId}}", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones", "{{calificacionId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by Estudiante",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/calificaciones/estudiante/{{estudianteId}}", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones", "estudiante", "{{estudianteId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create - Sistema AR",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('calificacionId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estudianteId\": \"{{estudianteId}}\",\n  \"materiaId\": \"{{materiaId}}\",\n  \"institucionId\": \"{{institucionId}}\",\n  \"sistemaOrigen\": \"AR\",\n  \"valorOriginal\": {\n    \"ar\": {\n      \"nota\": 8,\n      \"aprobado\": true\n    }\n  },\n  \"tipoEvaluacion\": \"parcial\",\n  \"fechaEvaluacion\": \"2024-06-15\",\n  \"periodo\": \"2024-1\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/calificaciones", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create - Sistema US",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estudianteId\": \"{{estudianteId}}\",\n  \"materiaId\": \"{{materiaId}}\",\n  \"institucionId\": \"{{institucionId}}\",\n  \"sistemaOrigen\": \"US\",\n  \"valorOriginal\": {\n    \"us\": {\n      \"letra\": \"B\",\n      \"gpa\": 3.0,\n      \"porcentaje\": 85\n    }\n  },\n  \"tipoEvaluacion\": \"final\",\n  \"fechaEvaluacion\": \"2024-06-15\",\n  \"periodo\": \"2024-1\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/calificaciones", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create - Sistema UK",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estudianteId\": \"{{estudianteId}}\",\n  \"materiaId\": \"{{materiaId}}\",\n  \"institucionId\": \"{{institucionId}}\",\n  \"sistemaOrigen\": \"UK\",\n  \"valorOriginal\": {\n    \"uk\": {\n      \"letra\": \"B\",\n      \"puntos\": 75\n    }\n  },\n  \"tipoEvaluacion\": \"final\",\n  \"fechaEvaluacion\": \"2024-06-15\",\n  \"periodo\": \"2024-1\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/calificaciones", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create - Sistema DE",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estudianteId\": \"{{estudianteId}}\",\n  \"materiaId\": \"{{materiaId}}\",\n  \"institucionId\": \"{{institucionId}}\",\n  \"sistemaOrigen\": \"DE\",\n  \"valorOriginal\": {\n    \"de\": {\n      \"nota\": 2.0,\n      \"puntos\": 80\n    }\n  },\n  \"tipoEvaluacion\": \"final\",\n  \"fechaEvaluacion\": \"2024-06-15\",\n  \"periodo\": \"2024-1\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/calificaciones", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Corregir (Nueva Version)",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"valorOriginal\": {\n    \"ar\": {\n      \"nota\": 9,\n      \"aprobado\": true\n    }\n  },\n  \"motivoCorreccion\": \"Error de carga - se corrige nota de 8 a 9\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/calificaciones/{{calificacionId}}/corregir", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones", "{{calificacionId}}", "corregir"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Verificar Integridad",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/calificaciones/{{calificacionId}}/verificar", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones", "{{calificacionId}}", "verificar"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Historial Versiones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/calificaciones/{{calificacionId}}/historial", "host": ["{{baseUrl}}"], "path": ["api", "calificaciones", "{{calificacionId}}", "historial"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Conversiones",
+			"description": "Conversión y normalización de calificaciones entre sistemas educativos",
+			"item": [
+				{
+					"name": "Convertir (Single)",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sistemaOrigen\": \"AR\",\n  \"sistemaDestino\": \"US\",\n  \"valorOriginal\": {\n    \"ar\": {\n      \"nota\": 8,\n      \"aprobado\": true\n    }\n  }\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/conversiones/convertir", "host": ["{{baseUrl}}"], "path": ["api", "conversiones", "convertir"]}
+					},
+					"response": [
+						{
+							"name": "200 - Conversión AR a US",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"sistemaOrigen\": \"AR\",\n    \"sistemaDestino\": \"US\",\n    \"valorOriginal\": {\"ar\": {\"nota\": 8, \"aprobado\": true}},\n    \"valorConvertido\": {\"us\": {\"letra\": \"B\", \"gpa\": 3.0, \"porcentaje\": 80}},\n    \"reglaAplicada\": \"AR_TO_US_V1\",\n    \"fecha\": \"2024-06-15T10:30:00.000Z\"\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Convertir Multiple",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sistemaOrigen\": \"AR\",\n  \"valorOriginal\": {\n    \"ar\": {\n      \"nota\": 8,\n      \"aprobado\": true\n    }\n  }\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/conversiones/multiple", "host": ["{{baseUrl}}"], "path": ["api", "conversiones", "multiple"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by Calificacion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/conversiones/calificacion/{{calificacionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "conversiones", "calificacion", "{{calificacionId}}"],
+							"query": [
+								{"key": "sistemaDestino", "value": "US", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Reglas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/conversiones/reglas",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "conversiones", "reglas"],
+							"query": [
+								{"key": "sistemaOrigen", "value": "AR", "disabled": true},
+								{"key": "sistemaDestino", "value": "US", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Tabla Equivalencias",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/conversiones/tabla/AR/US", "host": ["{{baseUrl}}"], "path": ["api", "conversiones", "tabla", "AR", "US"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Instituciones",
+			"description": "Gestión de instituciones educativas",
+			"item": [
+				{
+					"name": "List All",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/instituciones",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "instituciones"],
+							"query": [
+								{"key": "sistemaEducativo", "value": "AR", "disabled": true},
+								{"key": "tipo", "value": "universidad", "disabled": true},
+								{"key": "pais", "value": "Argentina", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('institucionId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/instituciones/{{institucionId}}", "host": ["{{baseUrl}}"], "path": ["api", "instituciones", "{{institucionId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by Codigo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/instituciones/codigo/UBA-AR", "host": ["{{baseUrl}}"], "path": ["api", "instituciones", "codigo", "UBA-AR"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('institucionId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"codigo\": \"UBA-AR\",\n  \"nombre\": \"Universidad de Buenos Aires\",\n  \"tipo\": \"universidad\",\n  \"sistemaEducativo\": \"AR\",\n  \"pais\": \"Argentina\",\n  \"direccion\": {\n    \"calle\": \"Av. Figueroa Alcorta 2263\",\n    \"ciudad\": \"Buenos Aires\",\n    \"codigoPostal\": \"C1425CKB\"\n  },\n  \"contacto\": {\n    \"email\": \"info@uba.ar\",\n    \"telefono\": \"+54 11 5287-2000\"\n  }\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/instituciones", "host": ["{{baseUrl}}"], "path": ["api", "instituciones"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Universidad de Buenos Aires - Actualizado\",\n  \"contacto\": {\n    \"email\": \"contacto@uba.ar\"\n  }\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/instituciones/{{institucionId}}", "host": ["{{baseUrl}}"], "path": ["api", "instituciones", "{{institucionId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/instituciones/{{institucionId}}", "host": ["{{baseUrl}}"], "path": ["api", "instituciones", "{{institucionId}}"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Materias",
+			"description": "Gestión de materias/asignaturas",
+			"item": [
+				{
+					"name": "List All",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/materias",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "materias"],
+							"query": [
+								{"key": "sistemaEducativo", "value": "AR", "disabled": true},
+								{"key": "area", "value": "Ciencias", "disabled": true},
+								{"key": "nivel", "value": "universitario", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('materiaId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/materias/{{materiaId}}", "host": ["{{baseUrl}}"], "path": ["api", "materias", "{{materiaId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by Sistema",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/materias/sistema/AR", "host": ["{{baseUrl}}"], "path": ["api", "materias", "sistema", "AR"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data._id) {",
+									"        pm.collectionVariables.set('materiaId', jsonData.data._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"codigo\": \"MAT101-AR\",\n  \"nombre\": \"Matemática I\",\n  \"sistemaEducativo\": \"AR\",\n  \"nivel\": \"universitario\",\n  \"area\": \"Ciencias Exactas\",\n  \"creditos\": 6,\n  \"descripcion\": \"Cálculo diferencial e integral de una variable\"\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/materias", "host": ["{{baseUrl}}"], "path": ["api", "materias"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Matemática I - Actualizado\",\n  \"creditos\": 8\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/materias/{{materiaId}}", "host": ["{{baseUrl}}"], "path": ["api", "materias", "{{materiaId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/materias/{{materiaId}}", "host": ["{{baseUrl}}"], "path": ["api", "materias", "{{materiaId}}"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reportes",
+			"description": "Reportes analíticos y estadísticas",
+			"item": [
+				{
+					"name": "Dashboard Resumen",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/reportes/resumen", "host": ["{{baseUrl}}"], "path": ["api", "reportes", "resumen"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Promedios por Materia",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/promedios-materia",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "promedios-materia"],
+							"query": [
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Promedios por Institucion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/promedios-institucion",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "promedios-institucion"],
+							"query": [
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Promedio por Pais",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/promedio/pais",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "promedio", "pais"],
+							"query": [
+								{"key": "anio", "value": "2024", "disabled": true},
+								{"key": "pais", "value": "AR", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Promedio por Institucion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/promedio/institucion",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "promedio", "institucion"],
+							"query": [
+								{"key": "institucionId", "value": "{{institucionId}}", "disabled": true},
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Distribucion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/distribucion",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "distribucion"],
+							"query": [
+								{"key": "sistemaEducativo", "value": "AR", "disabled": true},
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Tasa Aprobacion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/aprobacion",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "aprobacion"],
+							"query": [
+								{"key": "pais", "value": "AR", "disabled": true},
+								{"key": "nivel", "value": "universitario", "disabled": true},
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Historico",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/historico",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "historico"],
+							"query": [
+								{"key": "anioInicio", "value": "2020", "disabled": true},
+								{"key": "anioFin", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Top Materias",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reportes/top-materias",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reportes", "top-materias"],
+							"query": [
+								{"key": "criterio", "value": "promedio", "disabled": true},
+								{"key": "anio", "value": "2024", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Trayectorias (Neo4j)",
+			"description": "Trayectorias académicas y relaciones de grafos",
+			"item": [
+				{
+					"name": "Get Estudiante",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/trayectorias/estudiante/{{estudianteId}}?incluirConversiones=true",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trayectorias", "estudiante", "{{estudianteId}}"],
+							"query": [
+								{"key": "incluirConversiones", "value": "true"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Equivalencias",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/trayectorias/equivalencias",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "trayectorias", "equivalencias"],
+							"query": [
+								{"key": "materiaId", "value": "{{materiaId}}", "disabled": true},
+								{"key": "sistemaOrigen", "value": "AR", "disabled": true},
+								{"key": "sistemaDestino", "value": "US", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Equivalencia",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materiaOrigenId\": \"{{materiaId}}\",\n  \"materiaDestinoId\": \"64a1b2c3d4e5f6789012346\",\n  \"tipoEquivalencia\": \"total\",\n  \"porcentajeEquivalencia\": 100\n}"
+						},
+						"url": {"raw": "{{baseUrl}}/api/trayectorias/equivalencias", "host": ["{{baseUrl}}"], "path": ["api", "trayectorias", "equivalencias"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Camino Academico",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/trayectorias/camino/{{estudianteId}}", "host": ["{{baseUrl}}"], "path": ["api", "trayectorias", "camino", "{{estudianteId}}"]}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auditoria (Cassandra)",
+			"description": "Registros de auditoría y trazabilidad",
+			"item": [
+				{
+					"name": "Get Eventos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auditoria/eventos?limit=100",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auditoria", "eventos"],
+							"query": [
+								{"key": "tipoEvento", "value": "CREATE", "disabled": true},
+								{"key": "entidad", "value": "calificacion", "disabled": true},
+								{"key": "fechaInicio", "value": "2024-01-01", "disabled": true},
+								{"key": "fechaFin", "value": "2024-12-31", "disabled": true},
+								{"key": "limit", "value": "100"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by Entidad",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {"raw": "{{baseUrl}}/api/auditoria/entidad/calificacion/{{calificacionId}}", "host": ["{{baseUrl}}"], "path": ["api", "auditoria", "entidad", "calificacion", "{{calificacionId}}"]}
+					},
+					"response": []
+				},
+				{
+					"name": "Get by Usuario",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auditoria/usuario/64a1b2c3d4e5f6789012345?limit=100",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auditoria", "usuario", "64a1b2c3d4e5f6789012345"],
+							"query": [
+								{"key": "limit", "value": "100"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Estadisticas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auditoria/estadisticas",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auditoria", "estadisticas"],
+							"query": [
+								{"key": "fechaInicio", "value": "2024-01-01", "disabled": true},
+								{"key": "fechaFin", "value": "2024-12-31", "disabled": true}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

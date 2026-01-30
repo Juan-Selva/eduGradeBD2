@@ -1,0 +1,56 @@
+{
+  "name": "edugrade-global-api",
+  "version": "1.0.0",
+  "description": "API REST para Sistema Nacional de Calificaciones Multimodelo",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest --testPathPattern=__tests__/(models|services|middlewares)",
+    "test:integration": "jest --testPathPattern=__tests__/integration",
+    "seed": "node src/scripts/seed.js",
+    "seed:admin": "node src/scripts/seedAdmin.js",
+    "load:million": "node src/scripts/load-million.js"
+  },
+  "keywords": [
+    "edugrade",
+    "calificaciones",
+    "nosql",
+    "mongodb",
+    "neo4j",
+    "cassandra"
+  ],
+  "author": "EduGrade Team",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cassandra-driver": "^4.7.2",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "neo4j-driver": "^5.15.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.4.0",
+    "cli-progress": "^3.12.0",
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.1.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.0"
+  }
+}
