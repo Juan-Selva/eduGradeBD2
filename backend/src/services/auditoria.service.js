@@ -57,46 +57,66 @@ class AuditoriaService {
   }
 
   /**
+   * Obtener particiones recientes (año/mes)
+   */
+  _getRecentPartitions(monthsBack = 12) {
+    const partitions = [];
+    const now = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      partitions.push({
+        anio: date.getFullYear(),
+        mes: date.getMonth() + 1
+      });
+    }
+    return partitions;
+  }
+
+  /**
    * Obtener eventos de auditoria
    */
   async getEventos({ tipoEvento, entidad, fechaInicio, fechaFin, limit = 100 }) {
     try {
       const client = getCassandraClient();
+      const allResults = [];
 
-      let query = 'SELECT * FROM eventos_auditoria';
-      const conditions = [];
-      const params = [];
+      // Obtener particiones de los últimos 12 meses
+      const partitions = this._getRecentPartitions(12);
 
-      if (tipoEvento) {
-        conditions.push('tipo_evento = ?');
-        params.push(tipoEvento);
+      for (const partition of partitions) {
+        if (allResults.length >= limit) break;
+
+        let query = 'SELECT * FROM eventos_auditoria WHERE anio = ? AND mes = ?';
+        const params = [partition.anio, partition.mes];
+
+        if (tipoEvento) {
+          query += ' AND tipo_evento = ?';
+          params.push(tipoEvento);
+        }
+
+        if (entidad) {
+          query += ' AND entidad = ?';
+          params.push(entidad);
+        }
+
+        if (fechaInicio) {
+          query += ' AND timestamp >= ?';
+          params.push(new Date(fechaInicio));
+        }
+
+        if (fechaFin) {
+          query += ' AND timestamp <= ?';
+          params.push(new Date(fechaFin));
+        }
+
+        query += ` LIMIT ${limit - allResults.length} ALLOW FILTERING`;
+
+        const result = await client.execute(query, params, { prepare: true });
+        allResults.push(...result.rows);
       }
 
-      if (entidad) {
-        conditions.push('entidad = ?');
-        params.push(entidad);
-      }
-
-      if (fechaInicio) {
-        conditions.push('timestamp >= ?');
-        params.push(new Date(fechaInicio));
-      }
-
-      if (fechaFin) {
-        conditions.push('timestamp <= ?');
-        params.push(new Date(fechaFin));
-      }
-
-      if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
-        query += ' ALLOW FILTERING';
-      }
-
-      query += ` LIMIT ${limit}`;
-
-      const result = await client.execute(query, params, { prepare: true });
-
-      return result.rows.map(row => ({
+      return allResults.slice(0, limit).map(row => ({
         eventoId: row.evento_id,
         tipoEvento: row.tipo_evento,
         entidad: row.entidad,
@@ -151,8 +171,7 @@ class AuditoriaService {
       const query = `
         SELECT * FROM eventos_auditoria
         WHERE usuario_id = ?
-        LIMIT ?
-        ALLOW FILTERING
+        LIMIT ? ALLOW FILTERING
       `;
 
       const result = await client.execute(query, [usuarioId, limit], { prepare: true });

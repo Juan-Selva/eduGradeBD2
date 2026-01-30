@@ -50,7 +50,7 @@ exports.getPromedioPorPais = async (req, res) => {
         }
       },
       { $sort: { _id: 1 } }
-    ]);
+    ], { allowDiskUse: true });
 
     res.json({
       filtros: { anio, pais },
@@ -101,7 +101,7 @@ exports.getPromedioPorInstitucion = async (req, res) => {
       },
       { $sort: { totalCalificaciones: -1 } },
       { $limit: 20 }
-    ]);
+    ], { allowDiskUse: true });
 
     res.json({ filtros: { institucionId, anio }, datos: resultado });
   } catch (error) {
@@ -113,20 +113,25 @@ exports.getPromedioPorInstitucion = async (req, res) => {
 // Distribucion de calificaciones
 exports.getDistribucion = async (req, res) => {
   try {
-    const { sistemaEducativo, anio } = req.query;
+    const { pais, anio } = req.query;
 
     const match = { estado: 'vigente' };
     if (anio) match['cicloLectivo.anio'] = parseInt(anio);
-    if (sistemaEducativo) match.sistemaOrigen = sistemaEducativo;
+    if (pais) match.sistemaOrigen = pais;
 
-    // Distribucion por rangos
+    // Si hay filtro de país, mostrar escala específica; si no, categorías unificadas
+    const usarEscalaEspecifica = !!pais;
+
+    // Distribucion por rangos - soporta los 4 sistemas educativos
     const resultado = await Calificacion.aggregate([
       { $match: match },
       {
         $addFields: {
-          rango: {
+          rango: usarEscalaEspecifica ? {
+            // Con país específico: mostrar escala del sistema
             $switch: {
               branches: [
+                // Argentina (1-10)
                 { case: { $eq: ['$sistemaOrigen', 'AR'] }, then: {
                   $switch: {
                     branches: [
@@ -137,6 +142,7 @@ exports.getDistribucion = async (req, res) => {
                     default: 'Desaprobado (1-3)'
                   }
                 }},
+                // Estados Unidos (GPA 0-4)
                 { case: { $eq: ['$sistemaOrigen', 'US'] }, then: {
                   $switch: {
                     branches: [
@@ -146,23 +152,79 @@ exports.getDistribucion = async (req, res) => {
                     ],
                     default: 'Desaprobado (F)'
                   }
+                }},
+                // Reino Unido (A*-U)
+                { case: { $eq: ['$sistemaOrigen', 'UK'] }, then: {
+                  $switch: {
+                    branches: [
+                      { case: { $in: ['$valorOriginal.uk.letra', ['A*', 'A']] }, then: 'Excelente (A*-A)' },
+                      { case: { $in: ['$valorOriginal.uk.letra', ['B', 'C']] }, then: 'Bueno (B-C)' },
+                      { case: { $in: ['$valorOriginal.uk.letra', ['D', 'E']] }, then: 'Aprobado (D-E)' }
+                    ],
+                    default: 'Desaprobado (F-U)'
+                  }
+                }},
+                // Alemania (1-6, donde 1 es mejor)
+                { case: { $eq: ['$sistemaOrigen', 'DE'] }, then: {
+                  $switch: {
+                    branches: [
+                      { case: { $lte: ['$valorOriginal.de.nota', 1.5] }, then: 'Excelente (1.0-1.5)' },
+                      { case: { $lte: ['$valorOriginal.de.nota', 2.5] }, then: 'Bueno (1.6-2.5)' },
+                      { case: { $lte: ['$valorOriginal.de.nota', 4.0] }, then: 'Aprobado (2.6-4.0)' }
+                    ],
+                    default: 'Desaprobado (4.1-6.0)'
+                  }
                 }}
               ],
-              default: 'Otro'
+              default: 'Sin clasificar'
+            }
+          } : {
+            // Sin filtro de país: categorías unificadas
+            $switch: {
+              branches: [
+                // Argentina
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'AR'] }, { $gte: ['$valorOriginal.ar.nota', 9] }] }, then: 'Excelente' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'AR'] }, { $gte: ['$valorOriginal.ar.nota', 7] }] }, then: 'Bueno' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'AR'] }, { $gte: ['$valorOriginal.ar.nota', 4] }] }, then: 'Aprobado' },
+                { case: { $eq: ['$sistemaOrigen', 'AR'] }, then: 'Desaprobado' },
+                // Estados Unidos
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'US'] }, { $gte: ['$valorOriginal.us.gpa', 3.5] }] }, then: 'Excelente' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'US'] }, { $gte: ['$valorOriginal.us.gpa', 2.5] }] }, then: 'Bueno' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'US'] }, { $gte: ['$valorOriginal.us.gpa', 1.5] }] }, then: 'Aprobado' },
+                { case: { $eq: ['$sistemaOrigen', 'US'] }, then: 'Desaprobado' },
+                // Reino Unido
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'UK'] }, { $in: ['$valorOriginal.uk.letra', ['A*', 'A']] }] }, then: 'Excelente' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'UK'] }, { $in: ['$valorOriginal.uk.letra', ['B', 'C']] }] }, then: 'Bueno' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'UK'] }, { $in: ['$valorOriginal.uk.letra', ['D', 'E']] }] }, then: 'Aprobado' },
+                { case: { $eq: ['$sistemaOrigen', 'UK'] }, then: 'Desaprobado' },
+                // Alemania
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'DE'] }, { $lte: ['$valorOriginal.de.nota', 1.5] }] }, then: 'Excelente' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'DE'] }, { $lte: ['$valorOriginal.de.nota', 2.5] }] }, then: 'Bueno' },
+                { case: { $and: [{ $eq: ['$sistemaOrigen', 'DE'] }, { $lte: ['$valorOriginal.de.nota', 4.0] }] }, then: 'Aprobado' },
+                { case: { $eq: ['$sistemaOrigen', 'DE'] }, then: 'Desaprobado' }
+              ],
+              default: 'Sin clasificar'
             }
           }
         }
       },
       {
         $group: {
-          _id: { sistema: '$sistemaOrigen', rango: '$rango' },
+          _id: '$rango',
           cantidad: { $sum: 1 }
         }
       },
-      { $sort: { '_id.sistema': 1, '_id.rango': 1 } }
-    ]);
+      {
+        $project: {
+          _id: 0,
+          rango: '$_id',
+          cantidad: 1
+        }
+      },
+      { $sort: { rango: 1 } }
+    ], { allowDiskUse: true });
 
-    res.json({ filtros: { sistemaEducativo, anio }, distribucion: resultado });
+    res.json({ filtros: { pais, anio }, distribucion: resultado });
   } catch (error) {
     logger.error('Error en distribucion:', error);
     res.status(500).json({ error: 'Error generando distribucion' });
@@ -210,7 +272,7 @@ exports.getTasaAprobacion = async (req, res) => {
           tasaAprobacion: { $multiply: [{ $divide: ['$aprobados', '$total'] }, 100] }
         }
       }
-    ]);
+    ], { allowDiskUse: true });
 
     res.json({ filtros: { pais, nivel, anio }, tasas: resultado });
   } catch (error) {
@@ -238,7 +300,7 @@ exports.getComparacionHistorica = async (req, res) => {
         }
       },
       { $sort: { '_id.anio': 1, '_id.sistema': 1 } }
-    ]);
+    ], { allowDiskUse: true });
 
     res.json({ periodo: { inicio: anioInicio, fin: anioFin }, datos: resultado });
   } catch (error) {
@@ -250,6 +312,17 @@ exports.getComparacionHistorica = async (req, res) => {
 // Dashboard resumen - RF4
 exports.getResumen = async (req, res) => {
   try {
+    const { anio } = req.query;
+    const cacheKey = `reportes:resumen:${anio || 'all'}`;
+
+    // Intentar desde caché
+    const redis = getRedisClient();
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      logger.debug('Resumen obtenido de cache');
+      return res.json(JSON.parse(cached));
+    }
+
     const [totalEstudiantes, totalInstituciones, totalMaterias, totalCalificaciones, promedioResult] = await Promise.all([
       Estudiante.countDocuments(),
       Institucion.countDocuments(),
@@ -275,18 +348,24 @@ exports.getResumen = async (req, res) => {
             }
           }
         }
-      ])
+      ], { allowDiskUse: true })
     ]);
 
     const promedioGeneral = promedioResult[0]?.promedioGeneral || 0;
 
-    res.json({
+    const resultado = {
       totalEstudiantes,
       totalInstituciones,
       totalMaterias,
       totalCalificaciones,
       promedioGeneral: Math.round(promedioGeneral * 100) / 100
-    });
+    };
+
+    // Guardar en caché (5 minutos)
+    await redis.setex(cacheKey, CACHE_TTL_REPORTES, JSON.stringify(resultado));
+    logger.debug('Resumen guardado en cache');
+
+    res.json(resultado);
   } catch (error) {
     logger.error('Error en resumen dashboard:', error);
     res.status(500).json({ error: 'Error generando resumen' });
@@ -363,19 +442,22 @@ exports.getPromediosPorMateria = async (req, res) => {
       { $sort: { promedio: sortOrder } }
     ];
 
-    // Contar total
-    const countResult = await Calificacion.aggregate([...basePipeline, { $count: 'total' }]);
-    const total = countResult[0]?.total || 0;
-
-    // Obtener datos paginados
+    // Usar $facet para obtener datos y count en una sola query
     const resultado = await Calificacion.aggregate([
       ...basePipeline,
-      { $skip: skip },
-      { $limit: limitNum }
-    ]);
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limitNum }],
+          total: [{ $count: 'count' }]
+        }
+      }
+    ], { allowDiskUse: true });
+
+    const data = resultado[0]?.data || [];
+    const total = resultado[0]?.total[0]?.count || 0;
 
     const response = {
-      data: resultado,
+      data,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -473,19 +555,22 @@ exports.getPromediosPorInstitucion = async (req, res) => {
       { $sort: { promedio: sortOrder } }
     );
 
-    // Contar total
-    const countResult = await Calificacion.aggregate([...basePipeline, { $count: 'total' }]);
-    const total = countResult[0]?.total || 0;
-
-    // Obtener datos paginados
+    // Usar $facet para obtener datos y count en una sola query
     const resultado = await Calificacion.aggregate([
       ...basePipeline,
-      { $skip: skip },
-      { $limit: limitNum }
-    ]);
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limitNum }],
+          total: [{ $count: 'count' }]
+        }
+      }
+    ], { allowDiskUse: true });
+
+    const data = resultado[0]?.data || [];
+    const total = resultado[0]?.total[0]?.count || 0;
 
     const response = {
-      data: resultado,
+      data,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -505,13 +590,17 @@ exports.getPromediosPorInstitucion = async (req, res) => {
   }
 };
 
-// Top materias
+// Mejores promedios por materia
 exports.getTopMaterias = async (req, res) => {
   try {
-    const { criterio = 'promedio', anio } = req.query;
+    const { anio, pais } = req.query;
 
     const match = { estado: 'vigente' };
     if (anio) match['cicloLectivo.anio'] = parseInt(anio);
+    if (pais) match.sistemaOrigen = pais;
+
+    // Si hay filtro de país, agrupar por materiaId; si no, agrupar por codigoNormalizado (unificar)
+    const agruparUnificado = !pais;
 
     const resultado = await Calificacion.aggregate([
       { $match: match },
@@ -524,25 +613,64 @@ exports.getTopMaterias = async (req, res) => {
         }
       },
       { $unwind: '$materia' },
+      // Calcular valor normalizado (0-100) para cada calificación
       {
-        $group: {
+        $addFields: {
+          valorNormalizado: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$sistemaOrigen', 'AR'] }, then: { $multiply: ['$valorOriginal.ar.nota', 10] } },
+                { case: { $eq: ['$sistemaOrigen', 'US'] }, then: { $ifNull: ['$valorOriginal.us.porcentaje', { $multiply: ['$valorOriginal.us.gpa', 25] }] } },
+                { case: { $eq: ['$sistemaOrigen', 'DE'] }, then: { $multiply: [{ $subtract: [6, '$valorOriginal.de.nota'] }, 20] } },
+                { case: { $eq: ['$sistemaOrigen', 'UK'] }, then: { $ifNull: ['$valorOriginal.uk.puntos', 50] } }
+              ],
+              default: 50
+            }
+          }
+        }
+      },
+      {
+        $group: agruparUnificado ? {
+          // Sin filtro de país: agrupar por codigoNormalizado (unifica Biology de AR, US, UK, DE)
+          _id: '$materia.codigoNormalizado',
+          nombreIngles: { $first: '$materia.nombreIngles' },
+          promedio: { $avg: '$valorNormalizado' },
+          cantidad: { $sum: 1 },
+          totalEstudiantes: { $addToSet: '$estudianteId' },
+          paises: { $addToSet: '$sistemaOrigen' }
+        } : {
+          // Con filtro de país: agrupar por materiaId específico
           _id: { id: '$materiaId', nombre: '$materia.nombre', area: '$materia.area' },
+          promedio: { $avg: '$valorNormalizado' },
           cantidad: { $sum: 1 },
           totalEstudiantes: { $addToSet: '$estudianteId' }
         }
       },
+      // Filtrar materias sin código normalizado en vista unificada
+      ...(agruparUnificado ? [{ $match: { _id: { $ne: null } } }] : []),
       {
-        $project: {
-          materia: '$_id',
+        $project: agruparUnificado ? {
+          _id: 0,
+          codigo: '$_id',
+          nombre: '$nombreIngles',
+          promedio: { $round: ['$promedio', 2] },
+          cantidad: 1,
+          totalEstudiantes: { $size: '$totalEstudiantes' },
+          paises: 1
+        } : {
+          _id: 0,
+          nombre: '$_id.nombre',
+          area: '$_id.area',
+          promedio: { $round: ['$promedio', 2] },
           cantidad: 1,
           totalEstudiantes: { $size: '$totalEstudiantes' }
         }
       },
-      { $sort: { cantidad: -1 } },
+      { $sort: { promedio: -1 } },
       { $limit: 10 }
-    ]);
+    ], { allowDiskUse: true });
 
-    res.json({ criterio, anio, top10: resultado });
+    res.json({ anio, pais, top10: resultado });
   } catch (error) {
     logger.error('Error en top materias:', error);
     res.status(500).json({ error: 'Error generando top' });

@@ -28,3 +28,45 @@ export function usePromediosPorInstitucion(filters = {}) {
     queryFn: () => reportesApi.getPromediosPorInstitucion(filters),
   })
 }
+
+export function usePromedioPorPais(params = {}) {
+  return useQuery({
+    queryKey: ['reportes', 'promedio-pais', params],
+    queryFn: () => reportesApi.getPromedioPorPais(params),
+  })
+}
+
+export function usePromedioPorInstitucion(params = {}) {
+  return useQuery({
+    queryKey: ['reportes', 'promedio-institucion', params],
+    queryFn: () => reportesApi.getPromedioPorInstitucion(params),
+  })
+}
+
+export function useDistribucion(params = {}) {
+  return useQuery({
+    queryKey: ['reportes', 'distribucion', params],
+    queryFn: () => reportesApi.getDistribucion(params),
+  })
+}
+
+export function useTasaAprobacion(params = {}) {
+  return useQuery({
+    queryKey: ['reportes', 'aprobacion', params],
+    queryFn: () => reportesApi.getTasaAprobacion(params),
+  })
+}
+
+export function useComparacionHistorica(params = {}) {
+  return useQuery({
+    queryKey: ['reportes', 'historico', params],
+    queryFn: () => reportesApi.getComparacionHistorica(params),
+  })
+}
+
+export function useTopMaterias(params = {}) {
+  return useQuery({
+    queryKey: ['reportes', 'top-materias', params],
+    queryFn: () => reportesApi.getTopMaterias(params),
+  })
+}

@@ -6,6 +6,9 @@ import {
   Building2,
   BookOpen,
   BarChart3,
+  ArrowRightLeft,
+  Route,
+  Shield,
 } from 'lucide-react'
 
 const navigation = [
@@ -14,7 +17,10 @@ const navigation = [
   { name: 'Calificaciones', href: '/calificaciones', icon: GraduationCap },
   { name: 'Instituciones', href: '/instituciones', icon: Building2 },
   { name: 'Materias', href: '/materias', icon: BookOpen },
+  { name: 'Conversiones', href: '/conversiones', icon: ArrowRightLeft },
+  { name: 'Trayectorias', href: '/trayectorias', icon: Route },
   { name: 'Reportes', href: '/reportes', icon: BarChart3 },
+  { name: 'Auditoria', href: '/auditoria', icon: Shield },
 ]
 
 export default function Sidebar() {

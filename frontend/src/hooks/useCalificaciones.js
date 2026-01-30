@@ -57,3 +57,31 @@ export function useDeleteCalificacion() {
     },
   })
 }
+
+export function useCorregirCalificacion() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, ...data }) => calificacionesApi.corregir(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calificaciones'] })
+      queryClient.invalidateQueries({ queryKey: ['calificacion'] })
+    },
+  })
+}
+
+export function useVerificarIntegridad(id) {
+  return useQuery({
+    queryKey: ['calificacion', 'verificar', id],
+    queryFn: () => calificacionesApi.verificarIntegridad(id),
+    enabled: !!id,
+  })
+}
+
+export function useHistorialCalificacion(id) {
+  return useQuery({
+    queryKey: ['calificacion', 'historial', id],
+    queryFn: () => calificacionesApi.getHistorial(id),
+    enabled: !!id,
+  })
+}

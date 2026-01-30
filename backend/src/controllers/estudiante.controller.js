@@ -1,4 +1,5 @@
 const { Estudiante } = require('../models');
+const auditoriaService = require('../services/auditoria.service');
 const logger = require('../utils/logger');
 
 /**
@@ -9,12 +10,22 @@ const logger = require('../utils/logger');
 // Obtener todos los estudiantes
 exports.getAll = async (req, res) => {
   try {
-    const { page = 1, limit = 20, paisOrigen, estado, institucionId } = req.query;
+    const { page = 1, limit = 20, paisOrigen, estado, institucionId, search } = req.query;
 
     const query = {};
     if (paisOrigen) query.paisOrigen = paisOrigen;
     if (estado) query.estado = estado;
     if (institucionId) query.institucionId = institucionId;
+
+    // Búsqueda por nombre o email
+    if (search) {
+      query.$or = [
+        { nombreCompleto: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { nombre: { $regex: search, $options: 'i' } },
+        { apellido: { $regex: search, $options: 'i' } }
+      ];
+    }
 
     const estudiantes = await Estudiante.find(query)
       .populate('institucionId', 'nombre nombreCorto codigo')
@@ -78,6 +89,16 @@ exports.create = async (req, res) => {
     const estudiante = new Estudiante(req.body);
     await estudiante.save();
 
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'CREATE',
+      entidad: 'estudiante',
+      entidadId: estudiante._id.toString(),
+      usuarioId: req.user?.id || 'sistema',
+      datos: { nombre: estudiante.nombre, apellido: estudiante.apellido },
+      ip: req.ip
+    });
+
     logger.info(`Estudiante creado: ${estudiante._id}`);
     res.status(201).json(estudiante);
   } catch (error) {
@@ -104,6 +125,16 @@ exports.update = async (req, res) => {
       return res.status(404).json({ error: 'Estudiante no encontrado' });
     }
 
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'UPDATE',
+      entidad: 'estudiante',
+      entidadId: req.params.id,
+      usuarioId: req.user?.id || 'sistema',
+      datos: { cambios: Object.keys(req.body) },
+      ip: req.ip
+    });
+
     logger.info(`Estudiante actualizado: ${estudiante._id}`);
     res.json(estudiante);
   } catch (error) {
@@ -124,6 +155,16 @@ exports.delete = async (req, res) => {
     if (!estudiante) {
       return res.status(404).json({ error: 'Estudiante no encontrado' });
     }
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'DELETE',
+      entidad: 'estudiante',
+      entidadId: req.params.id,
+      usuarioId: req.user?.id || 'sistema',
+      datos: {},
+      ip: req.ip
+    });
 
     logger.info(`Estudiante eliminado (soft): ${estudiante._id}`);
     res.json({ message: 'Estudiante eliminado', estudiante });

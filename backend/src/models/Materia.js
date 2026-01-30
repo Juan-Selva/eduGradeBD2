@@ -17,6 +17,13 @@ const materiaSchema = new mongoose.Schema({
   },
   nombreIngles: String,
 
+  // Codigo normalizado para unificar materias equivalentes entre paises
+  // Ej: "Biology", "Biologie", "Biología" -> "biology"
+  codigoNormalizado: {
+    type: String,
+    index: true
+  },
+
   // Sistema educativo
   sistemaEducativo: {
     type: String,

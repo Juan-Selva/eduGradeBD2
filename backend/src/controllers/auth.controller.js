@@ -1,4 +1,5 @@
 const { Usuario } = require('../models');
+const auditoriaService = require('../services/auditoria.service');
 const logger = require('../utils/logger');
 const { asyncHandler } = require('../middlewares/errorHandler');
 const {
@@ -116,6 +117,16 @@ exports.login = asyncHandler(async (req, res) => {
 
   await usuario.save();
 
+  // Registrar evento de auditoría
+  await auditoriaService.registrarEvento({
+    tipoEvento: 'LOGIN',
+    entidad: 'usuario',
+    entidadId: usuario._id.toString(),
+    usuarioId: usuario._id.toString(),
+    datos: { email: usuario.email },
+    ip: req.ip
+  });
+
   logger.info(`Login exitoso: ${usuario.email}`);
 
   res.json({
@@ -199,6 +210,18 @@ exports.logout = asyncHandler(async (req, res) => {
       t => t.token !== refreshToken
     );
     await req.user.save();
+  }
+
+  // Registrar evento de auditoría
+  if (req.user) {
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'LOGOUT',
+      entidad: 'usuario',
+      entidadId: req.user._id.toString(),
+      usuarioId: req.user._id.toString(),
+      datos: { email: req.user.email },
+      ip: req.ip
+    });
   }
 
   logger.info(`Logout: ${req.user?.email}`);

@@ -1,4 +1,5 @@
 const { Materia } = require('../models');
+const auditoriaService = require('../services/auditoria.service');
 const logger = require('../utils/logger');
 
 exports.getAll = async (req, res) => {
@@ -48,6 +49,17 @@ exports.create = async (req, res) => {
   try {
     const materia = new Materia(req.body);
     await materia.save();
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'CREATE',
+      entidad: 'materia',
+      entidadId: materia._id.toString(),
+      usuarioId: req.user?.id || 'sistema',
+      datos: { nombre: materia.nombre, codigo: materia.codigo },
+      ip: req.ip
+    });
+
     res.status(201).json(materia);
   } catch (error) {
     logger.error('Error creando materia:', error);
@@ -59,6 +71,17 @@ exports.update = async (req, res) => {
   try {
     const materia = await Materia.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!materia) return res.status(404).json({ error: 'Materia no encontrada' });
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'UPDATE',
+      entidad: 'materia',
+      entidadId: req.params.id,
+      usuarioId: req.user?.id || 'sistema',
+      datos: { cambios: Object.keys(req.body) },
+      ip: req.ip
+    });
+
     res.json(materia);
   } catch (error) {
     logger.error('Error actualizando materia:', error);
@@ -70,6 +93,17 @@ exports.delete = async (req, res) => {
   try {
     const materia = await Materia.findByIdAndUpdate(req.params.id, { estado: 'inactiva' }, { new: true });
     if (!materia) return res.status(404).json({ error: 'Materia no encontrada' });
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'DELETE',
+      entidad: 'materia',
+      entidadId: req.params.id,
+      usuarioId: req.user?.id || 'sistema',
+      datos: {},
+      ip: req.ip
+    });
+
     res.json({ message: 'Materia eliminada', materia });
   } catch (error) {
     logger.error('Error eliminando materia:', error);

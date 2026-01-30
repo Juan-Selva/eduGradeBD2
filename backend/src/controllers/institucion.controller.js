@@ -1,4 +1,5 @@
 const { Institucion } = require('../models');
+const auditoriaService = require('../services/auditoria.service');
 const logger = require('../utils/logger');
 
 exports.getAll = async (req, res) => {
@@ -57,6 +58,17 @@ exports.create = async (req, res) => {
   try {
     const institucion = new Institucion(req.body);
     await institucion.save();
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'CREATE',
+      entidad: 'institucion',
+      entidadId: institucion._id.toString(),
+      usuarioId: req.user?.id || 'sistema',
+      datos: { nombre: institucion.nombre, codigo: institucion.codigo },
+      ip: req.ip
+    });
+
     res.status(201).json(institucion);
   } catch (error) {
     logger.error('Error creando institucion:', error);
@@ -72,6 +84,17 @@ exports.update = async (req, res) => {
     if (!institucion) {
       return res.status(404).json({ error: 'Institucion no encontrada' });
     }
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'UPDATE',
+      entidad: 'institucion',
+      entidadId: req.params.id,
+      usuarioId: req.user?.id || 'sistema',
+      datos: { cambios: Object.keys(req.body) },
+      ip: req.ip
+    });
+
     res.json(institucion);
   } catch (error) {
     logger.error('Error actualizando institucion:', error);
@@ -87,6 +110,17 @@ exports.delete = async (req, res) => {
     if (!institucion) {
       return res.status(404).json({ error: 'Institucion no encontrada' });
     }
+
+    // Registrar evento de auditoría
+    await auditoriaService.registrarEvento({
+      tipoEvento: 'DELETE',
+      entidad: 'institucion',
+      entidadId: req.params.id,
+      usuarioId: req.user?.id || 'sistema',
+      datos: {},
+      ip: req.ip
+    });
+
     res.json({ message: 'Institucion eliminada', institucion });
   } catch (error) {
     logger.error('Error eliminando institucion:', error);

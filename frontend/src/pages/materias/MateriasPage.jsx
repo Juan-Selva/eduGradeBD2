@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, BookOpen, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Card from '../../components/ui/Card'
@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal'
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
-import { useMaterias, useCreateMateria } from '../../hooks/useMaterias'
+import { useMaterias, useCreateMateria, useUpdateMateria, useDeleteMateria } from '../../hooks/useMaterias'
 
 export default function MateriasPage() {
   const [search, setSearch] = useState('')
@@ -16,10 +16,15 @@ export default function MateriasPage() {
   const [formModalOpen, setFormModalOpen] = useState(false)
   const [formData, setFormData] = useState({ nombre: '', codigo: '', creditos: '' })
   const [formError, setFormError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [materiaToDelete, setMateriaToDelete] = useState(null)
   const limit = 20
 
   const { data, isLoading, error } = useMaterias({ search, page, limit })
   const createMutation = useCreateMateria()
+  const updateMutation = useUpdateMateria()
+  const deleteMutation = useDeleteMateria()
 
   const materias = data?.data || []
   const pagination = data?.pagination || { total: 0, pages: 1 }
@@ -27,7 +32,34 @@ export default function MateriasPage() {
   const openCreateModal = () => {
     setFormData({ nombre: '', codigo: '', creditos: '' })
     setFormError('')
+    setEditingId(null)
     setFormModalOpen(true)
+  }
+
+  const openEditModal = (materia) => {
+    setFormData({
+      nombre: materia.nombre || '',
+      codigo: materia.codigo || '',
+      creditos: materia.creditos?.toString() || ''
+    })
+    setFormError('')
+    setEditingId(materia._id)
+    setFormModalOpen(true)
+  }
+
+  const openDeleteConfirm = (materia) => {
+    setMateriaToDelete(materia)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(materiaToDelete._id)
+      setDeleteConfirmOpen(false)
+      setMateriaToDelete(null)
+    } catch (err) {
+      setFormError(err.response?.data?.mensaje || 'Error al eliminar')
+    }
   }
 
   const handleFormChange = (e) => {
@@ -47,8 +79,13 @@ export default function MateriasPage() {
     }
 
     try {
-      await createMutation.mutateAsync(dataToSend)
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: editingId, ...dataToSend })
+      } else {
+        await createMutation.mutateAsync(dataToSend)
+      }
       setFormModalOpen(false)
+      setEditingId(null)
     } catch (err) {
       setFormError(err.response?.data?.mensaje || 'Error al guardar')
     }
@@ -109,6 +146,7 @@ export default function MateriasPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Codigo</TableHead>
                   <TableHead>Creditos</TableHead>
+                  <TableHead className="w-24">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,6 +155,24 @@ export default function MateriasPage() {
                     <TableCell className="font-medium">{materia.nombre}</TableCell>
                     <TableCell>{materia.codigo || '-'}</TableCell>
                     <TableCell>{materia.creditos || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(materia)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteConfirm(materia)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -155,8 +211,8 @@ export default function MateriasPage() {
 
       <Modal
         isOpen={formModalOpen}
-        onClose={() => setFormModalOpen(false)}
-        title="Nueva Materia"
+        onClose={() => { setFormModalOpen(false); setEditingId(null); }}
+        title={editingId ? 'Editar Materia' : 'Nueva Materia'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -187,18 +243,50 @@ export default function MateriasPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setFormModalOpen(false)}
+              onClick={() => { setFormModalOpen(false); setEditingId(null); }}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              loading={createMutation.isPending}
+              loading={createMutation.isPending || updateMutation.isPending}
             >
-              Crear
+              {editingId ? 'Guardar' : 'Crear'}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Confirmar eliminacion"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            ¿Estas seguro de que deseas eliminar la materia <strong>{materiaToDelete?.nombre}</strong>?
+          </p>
+          <p className="text-sm text-gray-500">
+            Esta accion marcara la materia como inactiva.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteConfirmOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              loading={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
+              Eliminar
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

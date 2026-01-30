@@ -30,4 +30,19 @@ export const calificacionesApi = {
     const { data } = await client.delete(`/calificaciones/${id}`)
     return data
   },
+
+  corregir: async (id, correccion) => {
+    const { data } = await client.post(`/calificaciones/${id}/corregir`, correccion)
+    return data
+  },
+
+  verificarIntegridad: async (id) => {
+    const { data } = await client.get(`/calificaciones/${id}/verificar`)
+    return data
+  },
+
+  getHistorial: async (id) => {
+    const { data } = await client.get(`/calificaciones/${id}/historial`)
+    return data
+  },
 }

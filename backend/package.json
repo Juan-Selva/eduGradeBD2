@@ -13,6 +13,9 @@
     "test:integration": "jest --testPathPattern=__tests__/integration",
     "seed": "node src/scripts/seed.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:neo4j": "node src/scripts/seedNeo4j.js",
+    "seed:all": "npm run seed && npm run seed:neo4j",
+    "seed:massive": "node src/scripts/seedMassive.js",
     "load:million": "node src/scripts/load-million.js"
   },
   "keywords": [

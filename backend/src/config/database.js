@@ -61,8 +61,70 @@ const getNeo4jSession = () => {
 // ============================================
 let cassandraClient = null;
 
+const initCassandraSchema = async (client) => {
+  // Crear keyspace si no existe
+  const createKeyspace = `
+    CREATE KEYSPACE IF NOT EXISTS ${process.env.CASSANDRA_KEYSPACE}
+    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+  `;
+  await client.execute(createKeyspace);
+
+  // Usar el keyspace
+  await client.execute(`USE ${process.env.CASSANDRA_KEYSPACE}`);
+
+  // Crear tabla de eventos de auditoria
+  const createEventosTable = `
+    CREATE TABLE IF NOT EXISTS eventos_auditoria (
+      evento_id UUID,
+      tipo_evento TEXT,
+      entidad TEXT,
+      entidad_id TEXT,
+      usuario_id TEXT,
+      datos TEXT,
+      ip TEXT,
+      timestamp TIMESTAMP,
+      anio INT,
+      mes INT,
+      PRIMARY KEY ((anio, mes), timestamp, evento_id)
+    ) WITH CLUSTERING ORDER BY (timestamp DESC, evento_id ASC)
+  `;
+  await client.execute(createEventosTable);
+
+  // Crear indices secundarios
+  try {
+    await client.execute('CREATE INDEX IF NOT EXISTS idx_tipo_evento ON eventos_auditoria (tipo_evento)');
+    await client.execute('CREATE INDEX IF NOT EXISTS idx_entidad ON eventos_auditoria (entidad)');
+    await client.execute('CREATE INDEX IF NOT EXISTS idx_usuario ON eventos_auditoria (usuario_id)');
+  } catch (e) {
+    // Indices pueden ya existir
+    logger.debug('Indices de Cassandra ya existen o no se pudieron crear');
+  }
+
+  logger.info('Schema de Cassandra inicializado correctamente');
+};
+
 const connectCassandra = async () => {
   try {
+    // Primero conectar sin keyspace para poder crearlo
+    const initClient = new cassandra.Client({
+      contactPoints: process.env.CASSANDRA_CONTACT_POINTS.split(','),
+      localDataCenter: process.env.CASSANDRA_LOCAL_DC,
+      pooling: {
+        coreConnectionsPerHost: {
+          [cassandra.types.distance.local]: 2,
+          [cassandra.types.distance.remote]: 1
+        }
+      }
+    });
+
+    await initClient.connect();
+    logger.info('Cassandra conectado, inicializando schema...');
+
+    // Inicializar schema
+    await initCassandraSchema(initClient);
+    await initClient.shutdown();
+
+    // Ahora conectar con el keyspace
     cassandraClient = new cassandra.Client({
       contactPoints: process.env.CASSANDRA_CONTACT_POINTS.split(','),
       localDataCenter: process.env.CASSANDRA_LOCAL_DC,
@@ -76,7 +138,7 @@ const connectCassandra = async () => {
     });
 
     await cassandraClient.connect();
-    logger.info('Cassandra conectado exitosamente');
+    logger.info('Cassandra conectado exitosamente con keyspace');
   } catch (error) {
     logger.error('Error conectando a Cassandra:', error.message);
     // Cassandra puede tardar mas en estar lista, reintentamos

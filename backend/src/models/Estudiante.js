@@ -91,7 +91,9 @@ const estudianteSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  collection: 'estudiantes'
+  collection: 'estudiantes',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Indices compuestos para busquedas frecuentes

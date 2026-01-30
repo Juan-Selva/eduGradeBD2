@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, Building2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, Building2, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Card from '../../components/ui/Card'
@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal'
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
-import { useInstituciones, useCreateInstitucion } from '../../hooks/useInstituciones'
+import { useInstituciones, useCreateInstitucion, useUpdateInstitucion, useDeleteInstitucion } from '../../hooks/useInstituciones'
 
 export default function InstitucionesPage() {
   const [search, setSearch] = useState('')
@@ -16,10 +16,15 @@ export default function InstitucionesPage() {
   const [formModalOpen, setFormModalOpen] = useState(false)
   const [formData, setFormData] = useState({ nombre: '', direccion: '', telefono: '' })
   const [formError, setFormError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [institucionToDelete, setInstitucionToDelete] = useState(null)
   const limit = 20
 
   const { data, isLoading, error } = useInstituciones({ search, page, limit })
   const createMutation = useCreateInstitucion()
+  const updateMutation = useUpdateInstitucion()
+  const deleteMutation = useDeleteInstitucion()
 
   const instituciones = data?.data || []
   const pagination = data?.pagination || { total: 0, pages: 1 }
@@ -27,7 +32,34 @@ export default function InstitucionesPage() {
   const openCreateModal = () => {
     setFormData({ nombre: '', direccion: '', telefono: '' })
     setFormError('')
+    setEditingId(null)
     setFormModalOpen(true)
+  }
+
+  const openEditModal = (institucion) => {
+    setFormData({
+      nombre: institucion.nombre || '',
+      direccion: institucion.direccion?.calle || '',
+      telefono: institucion.telefono || ''
+    })
+    setFormError('')
+    setEditingId(institucion._id)
+    setFormModalOpen(true)
+  }
+
+  const openDeleteConfirm = (institucion) => {
+    setInstitucionToDelete(institucion)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(institucionToDelete._id)
+      setDeleteConfirmOpen(false)
+      setInstitucionToDelete(null)
+    } catch (err) {
+      setFormError(err.response?.data?.mensaje || 'Error al eliminar')
+    }
   }
 
   const handleFormChange = (e) => {
@@ -42,8 +74,13 @@ export default function InstitucionesPage() {
     setFormError('')
 
     try {
-      await createMutation.mutateAsync(formData)
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: editingId, ...formData })
+      } else {
+        await createMutation.mutateAsync(formData)
+      }
       setFormModalOpen(false)
+      setEditingId(null)
     } catch (err) {
       setFormError(err.response?.data?.mensaje || 'Error al guardar')
     }
@@ -104,6 +141,7 @@ export default function InstitucionesPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Direccion</TableHead>
                   <TableHead>Telefono</TableHead>
+                  <TableHead className="w-24">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -112,6 +150,24 @@ export default function InstitucionesPage() {
                     <TableCell className="font-medium">{institucion.nombre}</TableCell>
                     <TableCell>{institucion.direccion?.calle || '-'}</TableCell>
                     <TableCell>{institucion.telefono || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(institucion)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteConfirm(institucion)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -150,8 +206,8 @@ export default function InstitucionesPage() {
 
       <Modal
         isOpen={formModalOpen}
-        onClose={() => setFormModalOpen(false)}
-        title="Nueva Institucion"
+        onClose={() => { setFormModalOpen(false); setEditingId(null); }}
+        title={editingId ? 'Editar Institucion' : 'Nueva Institucion'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -180,18 +236,50 @@ export default function InstitucionesPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setFormModalOpen(false)}
+              onClick={() => { setFormModalOpen(false); setEditingId(null); }}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              loading={createMutation.isPending}
+              loading={createMutation.isPending || updateMutation.isPending}
             >
-              Crear
+              {editingId ? 'Guardar' : 'Crear'}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Confirmar eliminacion"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            ¿Estas seguro de que deseas eliminar la institucion <strong>{institucionToDelete?.nombre}</strong>?
+          </p>
+          <p className="text-sm text-gray-500">
+            Esta accion marcara la institucion como inactiva.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteConfirmOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              loading={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
+              Eliminar
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

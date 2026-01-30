@@ -26,4 +26,34 @@ export const reportesApi = {
       pagination: data.pagination || null
     }
   },
+
+  getPromedioPorPais: async (params = {}) => {
+    const { data } = await client.get('/reportes/promedio/pais', { params })
+    return data
+  },
+
+  getPromedioPorInstitucion: async (params = {}) => {
+    const { data } = await client.get('/reportes/promedio/institucion', { params })
+    return data
+  },
+
+  getDistribucion: async (params = {}) => {
+    const { data } = await client.get('/reportes/distribucion', { params })
+    return data
+  },
+
+  getTasaAprobacion: async (params = {}) => {
+    const { data } = await client.get('/reportes/aprobacion', { params })
+    return data
+  },
+
+  getComparacionHistorica: async (params = {}) => {
+    const { data } = await client.get('/reportes/historico', { params })
+    return data
+  },
+
+  getTopMaterias: async (params = {}) => {
+    const { data } = await client.get('/reportes/top-materias', { params })
+    return data
+  },
 }

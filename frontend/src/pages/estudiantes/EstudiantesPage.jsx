@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Users, ChevronRight, ChevronLeft, Building2, Globe } from 'lucide-react'
+import { Plus, Search, Users, ChevronRight, ChevronLeft, Building2, Globe, Pencil, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
+import Modal from '../../components/ui/Modal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
-import { useEstudiantes } from '../../hooks/useEstudiantes'
+import { useEstudiantes, useDeleteEstudiante } from '../../hooks/useEstudiantes'
 import { useInstituciones } from '../../hooks/useInstituciones'
 
 export default function EstudiantesPage() {
@@ -16,13 +17,33 @@ export default function EstudiantesPage() {
   const [page, setPage] = useState(1)
   const [paisFilter, setPaisFilter] = useState('')
   const [institucionFilter, setInstitucionFilter] = useState('')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [estudianteToDelete, setEstudianteToDelete] = useState(null)
   const limit = 20
+
+  const deleteMutation = useDeleteEstudiante()
+
+  const openDeleteConfirm = (estudiante) => {
+    setEstudianteToDelete(estudiante)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(estudianteToDelete._id)
+      setDeleteConfirmOpen(false)
+      setEstudianteToDelete(null)
+    } catch (err) {
+      console.error('Error al eliminar:', err)
+    }
+  }
 
   const { data, isLoading, error } = useEstudiantes({
     page,
     limit,
     paisOrigen: paisFilter || undefined,
-    institucionId: institucionFilter || undefined
+    institucionId: institucionFilter || undefined,
+    search: search || undefined
   })
   const { data: institucionesData } = useInstituciones({
     limit: 500,
@@ -69,7 +90,7 @@ export default function EstudiantesPage() {
                 type="text"
                 placeholder="Buscar estudiantes..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
             </div>
@@ -128,6 +149,7 @@ export default function EstudiantesPage() {
                   <TableHead>DNI</TableHead>
                   <TableHead>Pais</TableHead>
                   <TableHead>Institucion</TableHead>
+                  <TableHead className="w-24">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -147,6 +169,24 @@ export default function EstudiantesPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       {estudiante.institucionId?.nombreCorto || estudiante.institucionId?.nombre || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => navigate(`/estudiantes/${estudiante._id}/editar`)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteConfirm(estudiante)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -181,6 +221,38 @@ export default function EstudiantesPage() {
           </>
         )}
       </Card>
+
+      <Modal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Confirmar eliminacion"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            ¿Estas seguro de que deseas eliminar al estudiante <strong>{estudianteToDelete?.nombre} {estudianteToDelete?.apellido}</strong>?
+          </p>
+          <p className="text-sm text-gray-500">
+            Esta accion marcara al estudiante como inactivo.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteConfirmOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              loading={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

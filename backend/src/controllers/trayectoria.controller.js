@@ -2,6 +2,14 @@ const { getNeo4jSession } = require('../config/database');
 const { Calificacion, Estudiante } = require('../models');
 const conversionService = require('../services/conversion.service');
 const logger = require('../utils/logger');
+const neo4j = require('neo4j-driver');
+
+// Helper para convertir Integer de Neo4j a numero JavaScript
+function toJsNumber(value) {
+  if (value === null || value === undefined) return null;
+  if (neo4j.isInt(value)) return value.toNumber();
+  return value;
+}
 
 /**
  * Controller de Trayectorias Academicas
@@ -30,33 +38,38 @@ exports.getByEstudiante = async (req, res) => {
       .populate('institucionId', 'nombre codigo sistemaEducativo')
       .sort({ fechaEvaluacion: -1 });
 
-    // Obtener relaciones desde Neo4j
-    const session = getNeo4jSession();
+    // Obtener relaciones desde Neo4j (opcional - funciona sin Neo4j)
     let grafo = null;
 
     try {
-      const result = await session.run(`
-        MATCH (e:Estudiante {mongoId: $estudianteId})
-        OPTIONAL MATCH (e)-[r:CURSO]->(m:Materia)
-        OPTIONAL MATCH (e)-[a:ASISTIO]->(i:Institucion)
-        OPTIONAL MATCH (m)-[eq:EQUIVALE]->(m2:Materia)
-        RETURN e, collect(DISTINCT {
-          materia: m,
-          relacion: r,
-          equivalencias: collect(DISTINCT {materia: m2, tipo: eq.tipo})
-        }) as materias,
-        collect(DISTINCT {institucion: i, desde: a.desde, hasta: a.hasta}) as instituciones
-      `, { estudianteId });
+      const session = getNeo4jSession();
+      try {
+        const result = await session.run(`
+          MATCH (e:Estudiante {mongoId: $estudianteId})
+          OPTIONAL MATCH (e)-[r:CURSO]->(m:Materia)
+          OPTIONAL MATCH (e)-[a:ASISTIO]->(i:Institucion)
+          OPTIONAL MATCH (m)-[eq:EQUIVALE]->(m2:Materia)
+          RETURN e, collect(DISTINCT {
+            materia: m,
+            relacion: r,
+            equivalencias: collect(DISTINCT {materia: m2, tipo: eq.tipo})
+          }) as materias,
+          collect(DISTINCT {institucion: i, desde: a.desde, hasta: a.hasta}) as instituciones
+        `, { estudianteId });
 
-      if (result.records.length > 0) {
-        const record = result.records[0];
-        grafo = {
-          materias: record.get('materias'),
-          instituciones: record.get('instituciones')
-        };
+        if (result.records.length > 0) {
+          const record = result.records[0];
+          grafo = {
+            materias: record.get('materias'),
+            instituciones: record.get('instituciones')
+          };
+        }
+      } finally {
+        await session.close();
       }
-    } finally {
-      await session.close();
+    } catch (neo4jError) {
+      logger.warn('Neo4j no disponible para trayectoria, continuando sin grafo:', neo4jError.message);
+      // Continua sin datos de grafo - MongoDB funciona independientemente
     }
 
     // Agregar conversiones si se solicitan
@@ -135,7 +148,7 @@ exports.getEquivalencias = async (req, res) => {
         materiaOrigen: record.get('m1').properties,
         materiaDestino: record.get('m2').properties,
         tipoEquivalencia: record.get('eq').properties.tipo,
-        porcentaje: record.get('eq').properties.porcentaje
+        porcentaje: toJsNumber(record.get('eq').properties.porcentaje)
       }));
 
       res.json(equivalencias);
@@ -186,7 +199,7 @@ exports.crearEquivalencia = async (req, res) => {
   }
 };
 
-// Obtener camino academico (grafo completo)
+// Obtener camino academico (grafo estructurado del estudiante)
 exports.getCaminoAcademico = async (req, res) => {
   try {
     const { estudianteId } = req.params;
@@ -194,44 +207,93 @@ exports.getCaminoAcademico = async (req, res) => {
     const session = getNeo4jSession();
 
     try {
+      // Query estructurada: obtener instituciones, materias y equivalencias del estudiante
       const result = await session.run(`
-        MATCH path = (e:Estudiante {mongoId: $estudianteId})-[*1..3]-(n)
-        RETURN path
-        LIMIT 50
+        MATCH (e:Estudiante {mongoId: $estudianteId})
+
+        // Instituciones donde asistio
+        OPTIONAL MATCH (e)-[asistio:ASISTIO]->(i:Institucion)
+
+        // Materias que curso
+        OPTIONAL MATCH (e)-[curso:CURSO]->(m:Materia)
+
+        // Equivalencias de las materias que curso
+        OPTIONAL MATCH (m)-[equiv:EQUIVALE]->(m2:Materia)
+        WHERE m2.sistema <> m.sistema
+
+        RETURN e,
+          collect(DISTINCT {
+            institucion: i.nombre,
+            sistema: i.sistema,
+            pais: i.pais
+          }) as instituciones,
+          collect(DISTINCT {
+            materia: m.nombre,
+            codigo: m.codigo,
+            sistema: m.sistema,
+            calificacion: curso.calificacion,
+            anio: curso.anio
+          }) as materiasCursadas,
+          collect(DISTINCT {
+            materiaOrigen: m.nombre,
+            sistemaOrigen: m.sistema,
+            materiaDestino: m2.nombre,
+            sistemaDestino: m2.sistema,
+            tipoEquivalencia: equiv.tipo,
+            porcentaje: equiv.porcentaje
+          }) as equivalencias
       `, { estudianteId });
 
-      const nodos = new Map();
-      const relaciones = [];
-
-      result.records.forEach(record => {
-        const path = record.get('path');
-        path.segments.forEach(segment => {
-          const startNode = segment.start;
-          const endNode = segment.end;
-          const rel = segment.relationship;
-
-          nodos.set(startNode.identity.toString(), {
-            id: startNode.identity.toString(),
-            labels: startNode.labels,
-            properties: startNode.properties
-          });
-          nodos.set(endNode.identity.toString(), {
-            id: endNode.identity.toString(),
-            labels: endNode.labels,
-            properties: endNode.properties
-          });
-          relaciones.push({
-            source: startNode.identity.toString(),
-            target: endNode.identity.toString(),
-            type: rel.type,
-            properties: rel.properties
-          });
+      if (result.records.length === 0) {
+        return res.json({
+          estudiante: null,
+          instituciones: [],
+          materiasCursadas: [],
+          equivalencias: []
         });
-      });
+      }
+
+      const record = result.records[0];
+      const estudianteNode = record.get('e');
+
+      // Filtrar nulls y convertir Integer de Neo4j a numeros JavaScript
+      const instituciones = record.get('instituciones')
+        .filter(i => i.institucion)
+        .map(i => ({
+          institucion: i.institucion,
+          sistema: i.sistema,
+          pais: i.pais
+        }));
+
+      const materiasCursadas = record.get('materiasCursadas')
+        .filter(m => m.materia)
+        .map(m => ({
+          materia: m.materia,
+          codigo: m.codigo,
+          sistema: m.sistema,
+          calificacion: toJsNumber(m.calificacion),
+          anio: toJsNumber(m.anio)
+        }));
+
+      const equivalencias = record.get('equivalencias')
+        .filter(eq => eq.materiaOrigen && eq.materiaDestino)
+        .map(eq => ({
+          materiaOrigen: eq.materiaOrigen,
+          sistemaOrigen: eq.sistemaOrigen,
+          materiaDestino: eq.materiaDestino,
+          sistemaDestino: eq.sistemaDestino,
+          tipoEquivalencia: eq.tipoEquivalencia,
+          porcentaje: toJsNumber(eq.porcentaje)
+        }));
 
       res.json({
-        nodos: Array.from(nodos.values()),
-        relaciones
+        estudiante: estudianteNode ? {
+          nombre: estudianteNode.properties.nombre,
+          paisOrigen: estudianteNode.properties.paisOrigen
+        } : null,
+        instituciones,
+        materiasCursadas,
+        equivalencias
       });
     } finally {
       await session.close();
