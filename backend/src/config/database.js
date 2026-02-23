@@ -13,6 +13,7 @@ const connectMongoDB = async () => {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      readPreference: 'secondaryPreferred',
     });
     logger.info('MongoDB conectado exitosamente');
   } catch (error) {
@@ -65,7 +66,7 @@ const initCassandraSchema = async (client) => {
   // Crear keyspace si no existe
   const createKeyspace = `
     CREATE KEYSPACE IF NOT EXISTS ${process.env.CASSANDRA_KEYSPACE}
-    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3}
   `;
   await client.execute(createKeyspace);
 
@@ -206,6 +207,63 @@ const connectAllDatabases = async () => {
   await connectCassandra();
 
   logger.info('Todas las bases de datos conectadas');
+
+  // Start periodic DB health checks for Prometheus
+  _startHealthChecks();
+};
+
+// ============================================
+// Health check periodico para metricas
+// ============================================
+let healthInterval = null;
+
+const _startHealthChecks = () => {
+  let metrics;
+  try { metrics = require('../middlewares/metrics'); } catch (e) { return; }
+
+  const setHealth = (database, value) => {
+    metrics.safeSet(metrics.dbConnectionHealth, { database }, value);
+  };
+
+  const check = async () => {
+    // MongoDB
+    setHealth('mongodb', mongoose.connection.readyState === 1 ? 1 : 0);
+
+    // Neo4j
+    try {
+      if (neo4jDriver) {
+        const s = neo4jDriver.session();
+        await s.run('RETURN 1');
+        await s.close();
+        setHealth('neo4j', 1);
+      } else {
+        setHealth('neo4j', 0);
+      }
+    } catch (e) { setHealth('neo4j', 0); }
+
+    // Cassandra
+    try {
+      if (cassandraClient) {
+        await cassandraClient.execute('SELECT now() FROM system.local');
+        setHealth('cassandra', 1);
+      } else {
+        setHealth('cassandra', 0);
+      }
+    } catch (e) { setHealth('cassandra', 0); }
+
+    // Redis
+    try {
+      if (redisClient) {
+        await redisClient.ping();
+        setHealth('redis', 1);
+      } else {
+        setHealth('redis', 0);
+      }
+    } catch (e) { setHealth('redis', 0); }
+  };
+
+  check();
+  healthInterval = setInterval(check, 30000);
 };
 
 // ============================================
