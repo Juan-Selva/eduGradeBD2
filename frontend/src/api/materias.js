@@ -16,6 +16,11 @@ export const materiasApi = {
     return data
   },
 
+  createReplicated: async (materia) => {
+    const { data } = await client.post('/materias/replicar', materia)
+    return data
+  },
+
   update: async (id, materia) => {
     const { data } = await client.put(`/materias/${id}`, materia)
     return data

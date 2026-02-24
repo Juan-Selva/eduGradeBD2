@@ -4,11 +4,12 @@ const logger = require('../utils/logger');
 
 exports.getAll = async (req, res) => {
   try {
-    const { page = 1, limit = 20, sistemaEducativo, tipo, pais } = req.query;
+    const { page = 1, limit = 20, sistemaEducativo, tipo, pais, search } = req.query;
     const query = {};
     if (sistemaEducativo) query.sistemaEducativo = sistemaEducativo;
     if (tipo) query.tipo = tipo;
     if (pais) query.pais = pais;
+    if (search) query.nombre = { $regex: search, $options: 'i' };
 
     const instituciones = await Institucion.find(query)
       .limit(limit * 1)

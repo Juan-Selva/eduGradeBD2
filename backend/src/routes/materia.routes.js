@@ -105,6 +105,8 @@ router.get('/sistema/:sistema',
  *       400:
  *         description: Datos invalidos
  */
+router.post('/replicar', materiaController.createReplicated);
+
 router.post('/', materia.createMateria, validate, materiaController.create);
 
 /**

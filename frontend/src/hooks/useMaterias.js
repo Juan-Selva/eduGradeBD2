@@ -27,6 +27,17 @@ export function useCreateMateria() {
   })
 }
 
+export function useCreateMateriaReplicada() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: materiasApi.createReplicated,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['materias'] })
+    },
+  })
+}
+
 export function useUpdateMateria() {
   const queryClient = useQueryClient()
 

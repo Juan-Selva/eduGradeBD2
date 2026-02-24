@@ -12,9 +12,10 @@ import CalificacionForm from './pages/calificaciones/CalificacionForm'
 import InstitucionesPage from './pages/instituciones/InstitucionesPage'
 import MateriasPage from './pages/materias/MateriasPage'
 import ReportesPage from './pages/reportes/ReportesPage'
-import ConversionesPage from './pages/conversiones/ConversionesPage'
+
 import TrayectoriasPage from './pages/trayectorias/TrayectoriasPage'
 import AuditoriaPage from './pages/auditoria/AuditoriaPage'
+import TransferenciasPage from './pages/transferencias/TransferenciasPage'
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -45,10 +46,11 @@ function App() {
           <Route path="/calificaciones/:id/editar" element={<CalificacionForm />} />
           <Route path="/instituciones" element={<InstitucionesPage />} />
           <Route path="/materias" element={<MateriasPage />} />
-          <Route path="/conversiones" element={<ConversionesPage />} />
+
           <Route path="/trayectorias" element={<TrayectoriasPage />} />
           <Route path="/reportes" element={<ReportesPage />} />
           <Route path="/auditoria" element={<AuditoriaPage />} />
+          <Route path="/transferencias" element={<TransferenciasPage />} />
         </Route>
       </Route>
 

@@ -1,5 +1,6 @@
 const { getRedisClient } = require('../config/database');
 const logger = require('../utils/logger');
+const { cacheHitsTotal, cacheMissesTotal, conversionesTotal, safeInc } = require('../middlewares/metrics');
 
 /**
  * Servicio de Conversion de Calificaciones
@@ -194,8 +195,10 @@ class ConversionService {
 
       if (cached) {
         logger.debug('Conversion obtenida de cache');
+        safeInc(cacheHitsTotal);
         return JSON.parse(cached);
       }
+      safeInc(cacheMissesTotal);
 
       // Normalizar valor
       const normalizado = normalizarValor(sistemaOrigen, valorOriginal);
@@ -221,6 +224,8 @@ class ConversionService {
         versionRegla: '1.0',
         fecha: new Date().toISOString()
       };
+
+      safeInc(conversionesTotal, { sistema_origen: sistemaOrigen, sistema_destino: sistemaDestino });
 
       // Guardar en cache (1 hora)
       await redis.setex(cacheKey, 3600, JSON.stringify(resultado));

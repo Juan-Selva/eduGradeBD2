@@ -14,7 +14,7 @@ exports.getAll = async (req, res) => {
 
     const query = {};
     if (paisOrigen) query.paisOrigen = paisOrigen;
-    if (estado) query.estado = estado;
+    query.estado = estado || 'activo';
     if (institucionId) query.institucionId = institucionId;
 
     // Búsqueda por nombre o email

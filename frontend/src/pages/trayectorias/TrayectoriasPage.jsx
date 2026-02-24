@@ -214,7 +214,7 @@ export default function TrayectoriasPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5" />
-                Camino Academico (Neo4j)
+                Camino Academico
               </CardTitle>
             </CardHeader>
             <CardContent>

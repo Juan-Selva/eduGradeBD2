@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Search, BookOpen, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -8,29 +8,50 @@ import Modal from '../../components/ui/Modal'
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
-import { useMaterias, useCreateMateria, useUpdateMateria, useDeleteMateria } from '../../hooks/useMaterias'
+import { useDebounce } from '../../hooks/useDebounce'
+import { useMaterias, useCreateMateria, useUpdateMateria, useDeleteMateria, useCreateMateriaReplicada } from '../../hooks/useMaterias'
 
 export default function MateriasPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const debouncedSearch = useDebounce(search, 400)
   const [formModalOpen, setFormModalOpen] = useState(false)
-  const [formData, setFormData] = useState({ nombre: '', codigo: '', creditos: '' })
+  const [formData, setFormData] = useState({ nombre: '', area: '', codigo: '', creditos: '' })
   const [formError, setFormError] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [materiaToDelete, setMateriaToDelete] = useState(null)
   const limit = 20
 
-  const { data, isLoading, error } = useMaterias({ search, page, limit })
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
+  const { data, isLoading, error } = useMaterias({ search: debouncedSearch, page, limit })
   const createMutation = useCreateMateria()
+  const createReplicadaMutation = useCreateMateriaReplicada()
   const updateMutation = useUpdateMateria()
   const deleteMutation = useDeleteMateria()
 
   const materias = data?.data || []
   const pagination = data?.pagination || { total: 0, pages: 1 }
 
+  const AREAS = [
+    { value: 'matematicas', label: 'Matematicas' },
+    { value: 'ciencias', label: 'Ciencias' },
+    { value: 'lengua', label: 'Lengua' },
+    { value: 'idiomas', label: 'Idiomas' },
+    { value: 'historia', label: 'Historia' },
+    { value: 'geografia', label: 'Geografia' },
+    { value: 'arte', label: 'Arte' },
+    { value: 'musica', label: 'Musica' },
+    { value: 'educacion_fisica', label: 'Educacion Fisica' },
+    { value: 'tecnologia', label: 'Tecnologia' },
+    { value: 'otra', label: 'Otra' },
+  ]
+
   const openCreateModal = () => {
-    setFormData({ nombre: '', codigo: '', creditos: '' })
+    setFormData({ nombre: '', area: '', codigo: '', creditos: '' })
     setFormError('')
     setEditingId(null)
     setFormModalOpen(true)
@@ -73,16 +94,15 @@ export default function MateriasPage() {
     e.preventDefault()
     setFormError('')
 
-    const dataToSend = {
-      ...formData,
-      creditos: formData.creditos ? parseInt(formData.creditos) : undefined,
-    }
-
     try {
       if (editingId) {
+        const dataToSend = {
+          ...formData,
+          creditos: formData.creditos ? parseInt(formData.creditos) : undefined,
+        }
         await updateMutation.mutateAsync({ id: editingId, ...dataToSend })
       } else {
-        await createMutation.mutateAsync(dataToSend)
+        await createReplicadaMutation.mutateAsync({ nombre: formData.nombre, area: formData.area })
       }
       setFormModalOpen(false)
       setEditingId(null)
@@ -93,7 +113,6 @@ export default function MateriasPage() {
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value)
-    setPage(1)
   }
 
   if (isLoading) return <Loading />
@@ -145,6 +164,8 @@ export default function MateriasPage() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Codigo</TableHead>
+                  <TableHead>Sistema</TableHead>
+                  <TableHead>Area</TableHead>
                   <TableHead>Creditos</TableHead>
                   <TableHead className="w-24">Acciones</TableHead>
                 </TableRow>
@@ -154,6 +175,8 @@ export default function MateriasPage() {
                   <TableRow key={materia._id}>
                     <TableCell className="font-medium">{materia.nombre}</TableCell>
                     <TableCell>{materia.codigo || '-'}</TableCell>
+                    <TableCell>{materia.sistemaEducativo || '-'}</TableCell>
+                    <TableCell>{materia.area || '-'}</TableCell>
                     <TableCell>{materia.creditos || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -222,20 +245,45 @@ export default function MateriasPage() {
             onChange={handleFormChange}
             required
           />
-          <Input
-            label="Codigo"
-            name="codigo"
-            value={formData.codigo}
-            onChange={handleFormChange}
-          />
-          <Input
-            label="Creditos"
-            type="number"
-            name="creditos"
-            value={formData.creditos}
-            onChange={handleFormChange}
-            min="1"
-          />
+          {editingId ? (
+            <>
+              <Input
+                label="Codigo"
+                name="codigo"
+                value={formData.codigo}
+                onChange={handleFormChange}
+              />
+              <Input
+                label="Creditos"
+                type="number"
+                name="creditos"
+                value={formData.creditos}
+                onChange={handleFormChange}
+                min="1"
+              />
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                <select
+                  name="area"
+                  value={formData.area}
+                  onChange={handleFormChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                >
+                  <option value="">Seleccionar area...</option>
+                  {AREAS.map((a) => (
+                    <option key={a.value} value={a.value}>{a.label}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-sm text-gray-500">
+                Se crearan 4 variantes automaticamente (UK, US, DE, AR) con valores por defecto segun cada sistema educativo.
+              </p>
+            </>
+          )}
 
           {formError && <ErrorMessage message={formError} />}
 
@@ -249,7 +297,7 @@ export default function MateriasPage() {
             </Button>
             <Button
               type="submit"
-              loading={createMutation.isPending || updateMutation.isPending}
+              loading={createReplicadaMutation.isPending || updateMutation.isPending}
             >
               {editingId ? 'Guardar' : 'Crear'}
             </Button>

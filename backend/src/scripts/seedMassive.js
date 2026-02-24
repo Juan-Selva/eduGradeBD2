@@ -207,7 +207,15 @@ async function limpiarNeo4j() {
   log.step('Limpiando Neo4j...');
   const session = neo4jDriver.session();
   try {
-    await session.run('MATCH (n) DETACH DELETE n');
+    // Borrar en batches para evitar límite de memoria
+    let deleted;
+    do {
+      const result = await session.run(
+        'MATCH (n) WITH n LIMIT 10000 DETACH DELETE n RETURN count(*) as deleted'
+      );
+      deleted = result.records[0].get('deleted').toNumber();
+      if (deleted > 0) log.info(`  Eliminados ${deleted} nodos...`);
+    } while (deleted > 0);
     log.success('Neo4j limpiado');
   } finally {
     await session.close();
@@ -336,6 +344,18 @@ async function seedCalificaciones(estudiantesMap, materiasMap, institucionesMap)
       log.warn(`  ${sistema}: Sin datos suficientes`);
       continue;
     }
+
+    // Asignar institucionId a cada estudiante
+    const bulkOps = estudiantes.map((est, i) => ({
+      updateOne: {
+        filter: { _id: est._id },
+        update: { $set: { institucionId: instituciones[i % instituciones.length]._id } }
+      }
+    }));
+    for (let b = 0; b < bulkOps.length; b += 5000) {
+      await Estudiante.bulkWrite(bulkOps.slice(b, b + 5000));
+    }
+    log.info(`  ${sistema}: ${estudiantes.length} estudiantes actualizados con institucionId`);
 
     const calificaciones = [];
 

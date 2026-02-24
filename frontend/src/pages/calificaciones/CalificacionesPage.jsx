@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, GraduationCap, ChevronLeft, ChevronRight, BookOpen, Globe } from 'lucide-react'
+import { Search, GraduationCap, ChevronLeft, ChevronRight, BookOpen, Globe, Plus } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useCalificaciones } from '../../hooks/useCalificaciones'
 import { useMaterias } from '../../hooks/useMaterias'
 
@@ -78,11 +79,17 @@ export default function CalificacionesPage() {
   const [page, setPage] = useState(1)
   const [paisFilter, setPaisFilter] = useState('')
   const [materiaFilter, setMateriaFilter] = useState('')
+  const debouncedSearch = useDebounce(search, 400)
   const limit = 20
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
 
   const { data, isLoading, error } = useCalificaciones({
     page,
     limit,
+    search: debouncedSearch || undefined,
     sistemaOrigen: paisFilter || undefined,
     materiaId: materiaFilter || undefined
   })
@@ -117,9 +124,6 @@ export default function CalificacionesPage() {
             {pagination.total.toLocaleString()} calificaciones en total
           </p>
         </div>
-        <Button icon={Plus} onClick={() => navigate('/calificaciones/nueva')}>
-          Nueva Calificacion
-        </Button>
       </div>
 
       <Card>

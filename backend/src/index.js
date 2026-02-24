@@ -19,7 +19,9 @@ const conversionRoutes = require('./routes/conversion.routes');
 const trayectoriaRoutes = require('./routes/trayectoria.routes');
 const reporteRoutes = require('./routes/reporte.routes');
 const auditoriaRoutes = require('./routes/auditoria.routes');
+const transferenciaRoutes = require('./routes/transferencia.routes');
 const authRoutes = require('./routes/auth.routes');
+const { metricsMiddleware, register: metricsRegister } = require('./middlewares/metrics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -142,6 +144,9 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Metrics middleware
+app.use(metricsMiddleware);
+
 // Rate limiting global
 app.use('/api', generalLimiter);
 
@@ -165,6 +170,7 @@ app.use('/api/conversiones', conversionRoutes);
 app.use('/api/trayectorias', trayectoriaRoutes);
 app.use('/api/reportes', reporteRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
+app.use('/api/transferencias', transferenciaRoutes);
 
 // ============================================
 // Ruta de salud
@@ -175,6 +181,18 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'edugrade-global-api'
   });
+});
+
+// ============================================
+// Metricas Prometheus
+// ============================================
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', metricsRegister.contentType);
+    res.end(await metricsRegister.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
 });
 
 // ============================================
@@ -194,7 +212,8 @@ app.get('/', (req, res) => {
       conversiones: '/api/conversiones',
       trayectorias: '/api/trayectorias',
       reportes: '/api/reportes',
-      auditoria: '/api/auditoria'
+      auditoria: '/api/auditoria',
+      transferencias: '/api/transferencias'
     }
   });
 });

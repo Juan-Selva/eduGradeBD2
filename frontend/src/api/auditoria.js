@@ -27,6 +27,7 @@ const transformEventos = (response, page = 1, limit = 20) => {
       entidad_id: e.entidadId,
       usuario_id: e.usuarioId,
       usuario_email: e.usuarioId, // El backend devuelve usuarioId como string
+      detalles: typeof e.datos === 'object' ? e.datos : {},
       descripcion: typeof e.datos === 'object' ? JSON.stringify(e.datos) : e.datos,
       ip: e.ip
     })),

@@ -1,10 +1,11 @@
 const rateLimit = require('express-rate-limit');
-const { RateLimitError } = require('./errors');
+const { rateLimitHitsTotal, safeInc } = require('./metrics');
 
 /**
  * Genera respuesta estandarizada para rate limit
  */
 const rateLimitHandler = (req, res, next, options) => {
+  safeInc(rateLimitHitsTotal, { endpoint: req.path });
   res.status(429).json({
     error: 'RATE_LIMIT_EXCEEDED',
     message: options.message || 'Demasiadas solicitudes, intente mas tarde',

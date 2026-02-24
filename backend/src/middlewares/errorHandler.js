@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
-const { AppError, ValidationError, DatabaseError } = require('./errors');
+const { AppError, ValidationError } = require('./errors');
+const { errorsTotal, safeInc } = require('./metrics');
 
 /**
  * Wrapper para controladores async
@@ -110,6 +111,8 @@ const errorHandler = (err, req, res, next) => {
       path: req.path
     });
   }
+
+  safeInc(errorsTotal, { type: error.code || 'UNKNOWN', endpoint: req.path });
 
   // Respuesta al cliente
   const response = error.toJSON ? error.toJSON() : {

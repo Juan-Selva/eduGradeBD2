@@ -84,6 +84,17 @@ const estudianteSchema = new mongoose.Schema({
     default: 'activo'
   },
 
+  // Historial de transferencias
+  transferencias: [{
+    fecha: { type: Date, default: Date.now },
+    institucionOrigenId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institucion' },
+    institucionDestinoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institucion' },
+    sistemaOrigen: { type: String, enum: ['UK', 'US', 'DE', 'AR'] },
+    sistemaDestino: { type: String, enum: ['UK', 'US', 'DE', 'AR'] },
+    materiasTransferidas: { type: Number },
+    estado: { type: String, enum: ['completada', 'pendiente', 'rechazada'], default: 'completada' }
+  }],
+
   // Metadata
   metadata: {
     type: mongoose.Schema.Types.Mixed,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Users, ChevronRight, ChevronLeft, Building2, Globe, Pencil, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useEstudiantes, useDeleteEstudiante } from '../../hooks/useEstudiantes'
 import { useInstituciones } from '../../hooks/useInstituciones'
 
@@ -19,6 +20,7 @@ export default function EstudiantesPage() {
   const [institucionFilter, setInstitucionFilter] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [estudianteToDelete, setEstudianteToDelete] = useState(null)
+  const debouncedSearch = useDebounce(search, 400)
   const limit = 20
 
   const deleteMutation = useDeleteEstudiante()
@@ -38,12 +40,16 @@ export default function EstudiantesPage() {
     }
   }
 
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
   const { data, isLoading, error } = useEstudiantes({
     page,
     limit,
     paisOrigen: paisFilter || undefined,
     institucionId: institucionFilter || undefined,
-    search: search || undefined
+    search: debouncedSearch || undefined
   })
   const { data: institucionesData } = useInstituciones({
     limit: 500,
@@ -90,7 +96,7 @@ export default function EstudiantesPage() {
                 type="text"
                 placeholder="Buscar estudiantes..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
             </div>
@@ -156,7 +162,12 @@ export default function EstudiantesPage() {
                 {estudiantes.map((estudiante) => (
                   <TableRow key={estudiante._id}>
                     <TableCell className="font-medium">
-                      {estudiante.nombre} {estudiante.apellido}
+                      <button
+                        onClick={() => navigate(`/estudiantes/${estudiante._id}`)}
+                        className="text-left hover:text-blue-600 hover:underline"
+                      >
+                        {estudiante.nombre} {estudiante.apellido}
+                      </button>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {estudiante.email || '-'}

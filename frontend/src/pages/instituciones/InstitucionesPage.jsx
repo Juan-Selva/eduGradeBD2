@@ -1,27 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Search, Building2, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
 import Card from '../../components/ui/Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import ErrorMessage from '../../components/shared/ErrorMessage'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useInstituciones, useCreateInstitucion, useUpdateInstitucion, useDeleteInstitucion } from '../../hooks/useInstituciones'
 
 export default function InstitucionesPage() {
   const [search, setSearch] = useState('')
+  const [pais, setPais] = useState('')
   const [page, setPage] = useState(1)
+  const debouncedSearch = useDebounce(search, 400)
   const [formModalOpen, setFormModalOpen] = useState(false)
-  const [formData, setFormData] = useState({ nombre: '', direccion: '', telefono: '' })
+  const [formData, setFormData] = useState({ nombre: '', codigo: '', tipo: '', sistemaEducativo: '', direccion: '', telefono: '' })
   const [formError, setFormError] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [institucionToDelete, setInstitucionToDelete] = useState(null)
   const limit = 20
 
-  const { data, isLoading, error } = useInstituciones({ search, page, limit })
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
+  const { data, isLoading, error } = useInstituciones({ search: debouncedSearch, page, limit, ...(pais && { pais }) })
   const createMutation = useCreateInstitucion()
   const updateMutation = useUpdateInstitucion()
   const deleteMutation = useDeleteInstitucion()
@@ -30,7 +38,7 @@ export default function InstitucionesPage() {
   const pagination = data?.pagination || { total: 0, pages: 1 }
 
   const openCreateModal = () => {
-    setFormData({ nombre: '', direccion: '', telefono: '' })
+    setFormData({ nombre: '', codigo: '', tipo: '', sistemaEducativo: '', direccion: '', telefono: '' })
     setFormError('')
     setEditingId(null)
     setFormModalOpen(true)
@@ -39,6 +47,9 @@ export default function InstitucionesPage() {
   const openEditModal = (institucion) => {
     setFormData({
       nombre: institucion.nombre || '',
+      codigo: institucion.codigo || '',
+      tipo: institucion.tipo || '',
+      sistemaEducativo: institucion.sistemaEducativo || '',
       direccion: institucion.direccion?.calle || '',
       telefono: institucion.telefono || ''
     })
@@ -73,11 +84,22 @@ export default function InstitucionesPage() {
     e.preventDefault()
     setFormError('')
 
+    const paisMap = { AR: 'Argentina', US: 'Estados Unidos', UK: 'Reino Unido', DE: 'Alemania' }
+    const payload = {
+      nombre: formData.nombre,
+      codigo: formData.codigo,
+      tipo: formData.tipo,
+      sistemaEducativo: formData.sistemaEducativo,
+      pais: paisMap[formData.sistemaEducativo] || '',
+      ...(formData.direccion && { direccion: { calle: formData.direccion } }),
+      ...(formData.telefono && { telefono: formData.telefono }),
+    }
+
     try {
       if (editingId) {
-        await updateMutation.mutateAsync({ id: editingId, ...formData })
+        await updateMutation.mutateAsync({ id: editingId, ...payload })
       } else {
-        await createMutation.mutateAsync(formData)
+        await createMutation.mutateAsync(payload)
       }
       setFormModalOpen(false)
       setEditingId(null)
@@ -88,7 +110,6 @@ export default function InstitucionesPage() {
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value)
-    setPage(1)
   }
 
   if (isLoading) return <Loading />
@@ -110,15 +131,28 @@ export default function InstitucionesPage() {
 
       <Card>
         <div className="p-4 border-b border-gray-200">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar instituciones..."
-              value={search}
-              onChange={handleSearchChange}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative max-w-sm flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar instituciones..."
+                value={search}
+                onChange={handleSearchChange}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+            <select
+              value={pais}
+              onChange={(e) => { setPais(e.target.value); setPage(1) }}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm"
+            >
+              <option value="">Todos los paises</option>
+              <option value="Argentina">Argentina</option>
+              <option value="Alemania">Alemania</option>
+              <option value="Estados Unidos">Estados Unidos</option>
+              <option value="Reino Unido">Reino Unido</option>
+            </select>
           </div>
         </div>
 
@@ -215,6 +249,43 @@ export default function InstitucionesPage() {
             name="nombre"
             value={formData.nombre}
             onChange={handleFormChange}
+            required
+          />
+          <Input
+            label="Codigo"
+            name="codigo"
+            value={formData.codigo}
+            onChange={handleFormChange}
+            placeholder="Ej: ST-MARYS-01"
+            required
+          />
+          <Select
+            label="Tipo"
+            name="tipo"
+            value={formData.tipo}
+            onChange={handleFormChange}
+            options={[
+              { value: 'primaria', label: 'Primaria' },
+              { value: 'secundaria', label: 'Secundaria' },
+              { value: 'preparatoria', label: 'Preparatoria' },
+              { value: 'universidad', label: 'Universidad' },
+              { value: 'instituto', label: 'Instituto' },
+            ]}
+            placeholder="Seleccionar tipo..."
+            required
+          />
+          <Select
+            label="Sistema Educativo"
+            name="sistemaEducativo"
+            value={formData.sistemaEducativo}
+            onChange={handleFormChange}
+            options={[
+              { value: 'AR', label: 'Argentina' },
+              { value: 'US', label: 'Estados Unidos' },
+              { value: 'UK', label: 'Reino Unido' },
+              { value: 'DE', label: 'Alemania' },
+            ]}
+            placeholder="Seleccionar sistema..."
             required
           />
           <Input

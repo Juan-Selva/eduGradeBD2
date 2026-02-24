@@ -10,11 +10,57 @@ import ErrorMessage from '../../components/shared/ErrorMessage'
 import { useEstudiante } from '../../hooks/useEstudiantes'
 import { useCalificacionesByEstudiante } from '../../hooks/useCalificaciones'
 
-function getBadgeVariant(nota) {
-  if (nota >= 90) return 'success'
-  if (nota >= 70) return 'info'
-  if (nota >= 60) return 'warning'
-  return 'error'
+function extraerNota(cal) {
+  const sistema = cal.sistemaOrigen?.toLowerCase()
+  const valor = cal.valorOriginal?.[sistema]
+  if (!valor) return cal.nota ?? '-'
+  switch (sistema) {
+    case 'uk': return valor.letra || '-'
+    case 'us': return valor.porcentaje !== undefined ? `${valor.porcentaje}%` : '-'
+    case 'de': return valor.nota ? `${valor.nota}${valor.tendencia || ''}` : '-'
+    case 'ar': return valor.nota !== undefined ? valor.nota : '-'
+    default: return '-'
+  }
+}
+
+function formatPeriodo(cal) {
+  if (cal.cicloLectivo) return `${cal.cicloLectivo.anio} - ${cal.cicloLectivo.periodo || ''}`
+  return cal.periodo || '-'
+}
+
+function getBadgeVariant(cal) {
+  const sistema = cal.sistemaOrigen?.toLowerCase()
+  const valor = cal.valorOriginal?.[sistema]
+  if (!valor) {
+    const nota = cal.nota
+    if (nota >= 90) return 'success'
+    if (nota >= 70) return 'info'
+    if (nota >= 60) return 'warning'
+    return 'error'
+  }
+  switch (sistema) {
+    case 'uk':
+      if (['A*', 'A', 'B'].includes(valor.letra)) return 'success'
+      if (['C', 'D'].includes(valor.letra)) return 'warning'
+      return 'error'
+    case 'us':
+      if (valor.porcentaje >= 90) return 'success'
+      if (valor.porcentaje >= 70) return 'info'
+      if (valor.porcentaje >= 60) return 'warning'
+      return 'error'
+    case 'de':
+      if (valor.nota <= 2) return 'success'
+      if (valor.nota <= 3) return 'info'
+      if (valor.nota <= 4) return 'warning'
+      return 'error'
+    case 'ar':
+      if (valor.nota >= 8) return 'success'
+      if (valor.nota >= 6) return 'info'
+      if (valor.nota >= 4) return 'warning'
+      return 'error'
+    default:
+      return 'default'
+  }
 }
 
 export default function EstudianteDetalle() {
@@ -63,7 +109,7 @@ export default function EstudianteDetalle() {
           <CardContent className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Documento</p>
-              <p className="font-medium">{estudiante.documento}</p>
+              <p className="font-medium">{estudiante.dni || estudiante.documento}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Fecha de Nacimiento</p>
@@ -75,7 +121,7 @@ export default function EstudianteDetalle() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Institucion</p>
-              <p className="font-medium">{estudiante.institucion?.nombre || '-'}</p>
+              <p className="font-medium">{estudiante.institucionId?.nombre || estudiante.institucion?.nombre || '-'}</p>
             </div>
           </CardContent>
         </Card>
@@ -102,11 +148,11 @@ export default function EstudianteDetalle() {
               <TableBody>
                 {calificaciones.map((cal) => (
                   <TableRow key={cal._id}>
-                    <TableCell>{cal.materia?.nombre || '-'}</TableCell>
-                    <TableCell>{cal.periodo || '-'}</TableCell>
+                    <TableCell>{cal.materiaId?.nombre || cal.materia?.nombre || '-'}</TableCell>
+                    <TableCell>{formatPeriodo(cal)}</TableCell>
                     <TableCell>
-                      <Badge variant={getBadgeVariant(cal.nota)}>
-                        {cal.nota}
+                      <Badge variant={getBadgeVariant(cal)}>
+                        {extraerNota(cal)}
                       </Badge>
                     </TableCell>
                   </TableRow>

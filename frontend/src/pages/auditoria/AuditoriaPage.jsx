@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Shield, Activity, User, Database, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import Card, { CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
@@ -6,6 +6,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import Loading from '../../components/shared/Loading'
 import EmptyState from '../../components/shared/EmptyState'
 import { useEventosAuditoria, useEstadisticasAuditoria } from '../../hooks/useAuditoria'
+import { useInstituciones } from '../../hooks/useInstituciones'
+import { useAuth } from '../../hooks/useAuth'
 
 const TIPOS_ACCION = [
   { value: '', label: 'Todas las acciones' },
@@ -71,6 +73,52 @@ function getAccionBadgeVariant(accion) {
   }
 }
 
+const LABEL_MAP = {
+  institucionOrigenId: 'Institución origen',
+  institucionDestinoId: 'Institución destino',
+  sistemaOrigen: 'Sistema origen',
+  sistemaDestino: 'Sistema destino',
+  materiasTransferidas: 'Materias transferidas',
+  email: 'Email',
+  nombre: 'Nombre',
+  apellido: 'Apellido',
+}
+
+function formatDetalles(evento, instMap) {
+  const raw = evento.detalles || evento.descripcion
+  if (!raw) return '-'
+
+  let obj = raw
+  if (typeof raw === 'string') {
+    try { obj = JSON.parse(raw) } catch { return raw }
+  }
+  if (typeof obj !== 'object' || obj === null) return String(obj)
+
+  const entries = Object.entries(obj).filter(([, v]) => v != null && v !== '')
+  if (entries.length === 0) return '-'
+
+  return (
+    <div className="space-y-0.5">
+      {entries.map(([key, value]) => {
+        const label = LABEL_MAP[key] || key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/Id$/, '').trim()
+        // Resolve institution IDs to names
+        let display
+        if ((key === 'institucionOrigenId' || key === 'institucionDestinoId') && instMap[value]) {
+          display = instMap[value]
+        } else {
+          display = typeof value === 'object' ? JSON.stringify(value) : String(value)
+        }
+        return (
+          <div key={key} className="text-xs">
+            <span className="text-gray-400">{label}: </span>
+            <span className="text-gray-700">{display}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function formatFecha(fecha) {
   if (!fecha) return '-'
   return new Date(fecha).toLocaleString('es-ES', {
@@ -99,6 +147,17 @@ export default function AuditoriaPage() {
   })
 
   const { data: estadisticas, isLoading: loadingEstadisticas } = useEstadisticasAuditoria()
+  const { data: institucionesData } = useInstituciones({ limit: 200 })
+  const { user } = useAuth()
+
+  // Build institution ID → name lookup
+  const instMap = useMemo(() => {
+    const map = {}
+    for (const inst of institucionesData?.data || []) {
+      map[inst._id] = inst.nombre
+    }
+    return map
+  }, [institucionesData])
 
   const handleFilterChange = (setter) => (e) => {
     setter(e.target.value)
@@ -265,7 +324,6 @@ export default function AuditoriaPage() {
                   <TableHead>Entidad</TableHead>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Detalles</TableHead>
-                  <TableHead>IP</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -288,13 +346,10 @@ export default function AuditoriaPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {evento.usuario?.nombre || evento.usuario_email || evento.usuario_id || '-'}
+                      {evento.usuario?.nombre || (evento.usuario_id === user?._id ? (user.nombre || user.email) : null) || evento.usuario_email || evento.usuario_id || '-'}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate text-sm text-gray-500">
-                      {evento.descripcion || evento.detalles || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-400">
-                      {evento.ip || '-'}
+                    <TableCell className="max-w-sm text-sm">
+                      {formatDetalles(evento, instMap)}
                     </TableCell>
                   </TableRow>
                 ))}

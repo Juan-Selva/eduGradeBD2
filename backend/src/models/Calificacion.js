@@ -102,7 +102,8 @@ const calificacionSchema = new mongoose.Schema({
       'parcial', 'final', 'recuperatorio',
       'coursework', 'exam', 'modulo',
       'quiz', 'midterm', 'assignment',
-      'trabajo_practico', 'oral', 'escrito'
+      'trabajo_practico', 'oral', 'escrito',
+      'equivalencia'
     ],
     required: true
   },

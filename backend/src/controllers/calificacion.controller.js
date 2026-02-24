@@ -1,6 +1,7 @@
 const { Calificacion, Estudiante, Materia, Institucion } = require('../models');
 const auditoriaService = require('../services/auditoria.service');
 const logger = require('../utils/logger');
+const { calificacionesRegistradas, safeInc } = require('../middlewares/metrics');
 
 /**
  * Controller de Calificaciones
@@ -18,7 +19,8 @@ exports.getAll = async (req, res) => {
       materiaId,
       sistemaOrigen,
       anio,
-      estado = 'vigente'
+      estado = 'vigente',
+      search
     } = req.query;
 
     const query = { estado };
@@ -26,6 +28,19 @@ exports.getAll = async (req, res) => {
     if (materiaId) query.materiaId = materiaId;
     if (sistemaOrigen) query.sistemaOrigen = sistemaOrigen;
     if (anio) query['cicloLectivo.anio'] = parseInt(anio);
+
+    if (search) {
+      const [estudiantes, materias] = await Promise.all([
+        Estudiante.find({ $or: [{ nombre: { $regex: search, $options: 'i' } }, { apellido: { $regex: search, $options: 'i' } }] }).select('_id'),
+        Materia.find({ nombre: { $regex: search, $options: 'i' } }).select('_id')
+      ]);
+      const estudianteIds = estudiantes.map(e => e._id);
+      const materiaIds = materias.map(m => m._id);
+      query.$or = [
+        { estudianteId: { $in: estudianteIds } },
+        { materiaId: { $in: materiaIds } }
+      ];
+    }
 
     const calificaciones = await Calificacion.find(query)
       .populate('estudianteId', 'nombre apellido dni')
@@ -177,6 +192,8 @@ exports.create = async (req, res) => {
       datos: { sistemaOrigen, tipoEvaluacion },
       ip: req.ip
     });
+
+    safeInc(calificacionesRegistradas, { sistema: sistemaOrigen, tipo_evaluacion: tipoEvaluacion });
 
     logger.info(`Calificacion creada: ${calificacion.calificacionId}`);
 
