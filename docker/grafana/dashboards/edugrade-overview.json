@@ -8,87 +8,258 @@
   "liveNow": false,
   "panels": [
     {
-      "title": "Request Rate (req/s)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "targets": [
-        {
-          "expr": "rate(edugrade_http_requests_total[5m])",
-          "legendFormat": "{{method}} {{route}} {{status_code}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": { "unit": "reqps" }
+      "title": "",
+      "type": "text",
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "html",
+        "content": "<div style=\"text-align:center;padding:8px 0\"><h2 style=\"margin:0;color:#c4c4c4;font-weight:300;letter-spacing:2px\">📊 EDUGRADE GLOBAL — MONITOREO EN TIEMPO REAL</h2></div>"
       }
     },
     {
-      "title": "Request Duration (p95)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, rate(edugrade_http_request_duration_seconds_bucket[5m]))",
-          "legendFormat": "p95"
-        },
-        {
-          "expr": "histogram_quantile(0.50, rate(edugrade_http_request_duration_seconds_bucket[5m]))",
-          "legendFormat": "p50"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": { "unit": "s" }
-      }
-    },
-    {
-      "title": "Database Health",
+      "title": "MongoDB",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 8 },
+      "gridPos": { "h": 3, "w": 6, "x": 0, "y": 2 },
       "targets": [
         {
-          "expr": "edugrade_db_connection_health",
-          "legendFormat": "{{database}}"
+          "expr": "edugrade_db_connection_health{database=\"mongodb\"}",
+          "legendFormat": "MongoDB"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } }, "type": "value" }
+            { "options": { "0": { "text": "⛔ OFFLINE", "color": "red" }, "1": { "text": "✅ ONLINE", "color": "green" } }, "type": "value" }
           ],
           "thresholds": {
             "steps": [
               { "color": "red", "value": null },
               { "color": "green", "value": 1 }
             ]
-          }
+          },
+          "color": { "mode": "thresholds" }
         }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
       }
     },
     {
-      "title": "Conversiones por Sistema",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "title": "Neo4j",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 6, "x": 6, "y": 2 },
       "targets": [
         {
-          "expr": "rate(edugrade_conversiones_total[5m])",
-          "legendFormat": "{{sistema_origen}} -> {{sistema_destino}}"
+          "expr": "edugrade_db_connection_health{database=\"neo4j\"}",
+          "legendFormat": "Neo4j"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "⛔ OFFLINE", "color": "red" }, "1": { "text": "✅ ONLINE", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
     },
     {
-      "title": "Transferencias",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "title": "Cassandra",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 6, "x": 12, "y": 2 },
       "targets": [
         {
-          "expr": "rate(edugrade_transferencias_total[5m])",
-          "legendFormat": "{{sistema_origen}} -> {{sistema_destino}} ({{status}})"
+          "expr": "edugrade_db_connection_health{database=\"cassandra\"}",
+          "legendFormat": "Cassandra"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "⛔ OFFLINE", "color": "red" }, "1": { "text": "✅ ONLINE", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "title": "Redis",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 6, "x": 18, "y": 2 },
+      "targets": [
+        {
+          "expr": "edugrade_db_connection_health{database=\"redis\"}",
+          "legendFormat": "Redis"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "⛔ OFFLINE", "color": "red" }, "1": { "text": "✅ ONLINE", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "title": "Total Requests",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(edugrade_http_requests_total{route!=\"/metrics\"})",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "title": "Request Rate",
+      "description": "Requests per second (excl. /metrics)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(edugrade_http_requests_total{route!=\"/metrics\"}[5m]))",
+          "legendFormat": "req/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "thresholds": {
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "title": "Avg Response Time",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(edugrade_http_request_duration_seconds_sum{route!=\"/metrics\"}[5m])) / sum(rate(edugrade_http_request_duration_seconds_count{route!=\"/metrics\"}[5m]))",
+          "legendFormat": "Avg"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 2 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(edugrade_http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(edugrade_http_requests_total[5m])) * 100",
+          "legendFormat": "Error %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0%"
+        }
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
     },
     {
       "title": "Cache Hit Rate",
       "type": "gauge",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 5 },
       "targets": [
         {
           "expr": "rate(edugrade_cache_hits_total[5m]) / (rate(edugrade_cache_hits_total[5m]) + rate(edugrade_cache_misses_total[5m]))",
@@ -100,54 +271,424 @@
           "unit": "percentunit",
           "min": 0,
           "max": 1,
+          "decimals": 1,
+          "noValue": "N/A",
           "thresholds": {
             "steps": [
               { "color": "red", "value": null },
               { "color": "yellow", "value": 0.5 },
               { "color": "green", "value": 0.8 }
             ]
-          }
+          },
+          "color": { "mode": "thresholds" }
         }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdMarkers": true,
+        "showThresholdLabels": false
       }
     },
     {
-      "title": "Errores por Tipo",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+      "title": "Rate Limit Hits",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 5 },
       "targets": [
         {
-          "expr": "rate(edugrade_errors_total[5m])",
+          "expr": "sum(increase(edugrade_rate_limit_hits_total[1h]))",
+          "legendFormat": "Last 1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "title": "📈 Request Rate por Endpoint",
+      "description": "Requests/s agrupadas por ruta (excluyendo /metrics)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(edugrade_http_requests_total{route!=\"/metrics\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": true
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "⏱️ Latencia por Endpoint (p50 / p95 / p99)",
+      "description": "Percentiles de duración de requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(edugrade_http_request_duration_seconds_bucket{route!=\"/metrics\"}[5m])))",
+          "legendFormat": "p99"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(edugrade_http_request_duration_seconds_bucket{route!=\"/metrics\"}[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(edugrade_http_request_duration_seconds_bucket{route!=\"/metrics\"}[5m])))",
+          "legendFormat": "p50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "scheme",
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "last"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "🔀 Requests por Status Code",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 17 },
+      "targets": [
+        {
+          "expr": "sum by (status_code) (rate(edugrade_http_requests_total{route!=\"/metrics\"}[5m]))",
+          "legendFormat": "HTTP {{status_code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "stacking": { "mode": "normal" }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 2.." },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 3.." },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 4.." },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 5.." },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "📊 Calificaciones Registradas",
+      "description": "Rate de calificaciones registradas por sistema educativo",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 17 },
+      "targets": [
+        {
+          "expr": "sum by (sistema) (rate(edugrade_calificaciones_registradas_total[5m]))",
+          "legendFormat": "{{sistema}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": true
+          }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "🔄 Transferencias por Estado",
+      "description": "Rate de transferencias entre sistemas educativos",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 17 },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(edugrade_transferencias_total[5m]))",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "completada|aprobada" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "pendiente" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "rechazada|error" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "🚨 Errores por Tipo",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 25 },
+      "targets": [
+        {
+          "expr": "sum by (type) (rate(edugrade_errors_total[5m]))",
           "legendFormat": "{{type}}"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
     },
     {
-      "title": "Rate Limit Hits",
+      "title": "🧠 Uso de Memoria Node.js",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 25 },
       "targets": [
         {
-          "expr": "rate(edugrade_rate_limit_hits_total[5m])",
-          "legendFormat": "{{endpoint}}"
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "RSS"
+        },
+        {
+          "expr": "nodejs_heap_size_used_bytes",
+          "legendFormat": "Heap Used"
+        },
+        {
+          "expr": "nodejs_heap_size_total_bytes",
+          "legendFormat": "Heap Total"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["last", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
     },
     {
-      "title": "Calificaciones Registradas",
+      "title": "⚡ Event Loop Lag",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 25 },
       "targets": [
         {
-          "expr": "rate(edugrade_calificaciones_registradas_total[5m])",
-          "legendFormat": "{{sistema}} - {{tipo_evaluacion}}"
+          "expr": "rate(nodejs_eventloop_lag_seconds[5m])",
+          "legendFormat": "Event Loop Lag"
+        },
+        {
+          "expr": "nodejs_eventloop_lag_p99_seconds",
+          "legendFormat": "p99 Lag"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "title": "⏱️ Top 5 Endpoints mas Lentos (avg)",
+      "type": "bargauge",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 32 },
+      "targets": [
+        {
+          "expr": "topk(5, sum by (route) (rate(edugrade_http_request_duration_seconds_sum{route!=\"/metrics\"}[5m])) / sum by (route) (rate(edugrade_http_request_duration_seconds_count{route!=\"/metrics\"}[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "orange", "value": 2 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      }
+    },
+    {
+      "title": "📡 Top 5 Endpoints mas Usados",
+      "type": "bargauge",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 32 },
+      "targets": [
+        {
+          "expr": "topk(5, sum by (route) (rate(edugrade_http_requests_total{route!=\"/metrics\"}[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "purple", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      }
     }
   ],
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["edugrade"],
+  "tags": ["edugrade", "overview"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "title": "EduGrade Global - Overview",

@@ -631,8 +631,8 @@ exports.getTopMaterias = async (req, res) => {
       },
       {
         $group: agruparUnificado ? {
-          // Sin filtro de país: agrupar por codigoNormalizado (unifica Biology de AR, US, UK, DE)
-          _id: '$materia.codigoNormalizado',
+          // Sin filtro de país: agrupar por nombreIngles (unifica Biology de AR, US, UK, DE)
+          _id: '$materia.nombreIngles',
           nombreIngles: { $first: '$materia.nombreIngles' },
           promedio: { $avg: '$valorNormalizado' },
           cantidad: { $sum: 1 },

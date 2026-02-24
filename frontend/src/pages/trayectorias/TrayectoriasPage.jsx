@@ -11,6 +11,17 @@ import ErrorMessage from '../../components/shared/ErrorMessage'
 import { useTrayectoriaEstudiante, useEquivalencias, useCrearEquivalencia, useCaminoAcademico } from '../../hooks/useTrayectorias'
 import { useEstudiantes } from '../../hooks/useEstudiantes'
 
+function extraerNota(cal) {
+  const v = cal.valorOriginal
+  if (!v) return cal.valor || null
+  if (v.ar?.nota != null) return v.ar.nota
+  if (v.us?.letra) return `${v.us.letra} (${v.us.gpa})`
+  if (v.de?.nota != null) return v.de.nota
+  if (v.uk?.numerico != null) return v.uk.numerico
+  if (v.uk?.clasificacion) return v.uk.clasificacion
+  return cal.valor || null
+}
+
 function TrayectoriaVisual({ trayectoria }) {
   if (!trayectoria) {
     return (
@@ -84,13 +95,13 @@ function TrayectoriaVisual({ trayectoria }) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {(cal.valorOriginal?.ar?.nota || cal.valor) && (
+                {extraerNota(cal) != null && (
                   <Badge variant="info">
-                    {cal.valorOriginal?.ar?.nota || cal.valor}
+                    {extraerNota(cal)}
                   </Badge>
                 )}
-                {cal.sistema && (
-                  <Badge variant="warning">{cal.sistema}</Badge>
+                {(cal.sistemaOrigen || cal.sistema) && (
+                  <Badge variant="warning">{cal.sistemaOrigen || cal.sistema}</Badge>
                 )}
               </div>
             </div>
